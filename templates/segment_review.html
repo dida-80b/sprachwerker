@@ -367,6 +367,7 @@
         activeDatasetSelect.addEventListener('change', () => {
             activeDataset = activeDatasetSelect.value;
             updateActiveDatasetBadge();
+            syncWorkflowFromActiveProfile();
         });
 
         btnStartCycle.addEventListener('click', startCycle);
@@ -375,6 +376,14 @@
         btnAsrAll.addEventListener('click', transcribeAllSegments);
         btnSaveApproved.addEventListener('click', saveApprovedSegments);
         createDatasetButton.addEventListener('click', createDatasetProfile);
+        createDatasetNameInput.addEventListener('input', updateCreateDatasetButton);
+
+        function updateCreateDatasetButton() {
+            const name = sanitizeDatasetName(createDatasetNameInput.value || '');
+            const exists = name && datasetProfiles.some((p) => p.name === name);
+            createDatasetButton.disabled = !!exists;
+            createDatasetButton.title = exists ? (language.startsWith('de') ? `"${name}" existiert bereits — Emotion einfach im Dropdown wechseln` : `"${name}" already exists — just change the emotion in the dropdown`) : '';
+        }
         studioTabRecording.addEventListener('click', () => setStudioTab('recording'));
         studioTabCheckup.addEventListener('click', () => setStudioTab('checkup'));
         studioTabDatasets.addEventListener('click', () => setStudioTab('datasets'));
@@ -681,6 +690,7 @@
                         dataset,
                         promptType: dialogPromptType.value,
                         promptLength: dialogPromptLength.value,
+                        emotion: emotionLabelInput.value,
                         history: dialogPromptHistory,
                     }),
                 });
@@ -764,6 +774,8 @@
             }
             renderActiveDatasetSelect();
             updateActiveDatasetBadge();
+            syncWorkflowFromActiveProfile();
+            updateCreateDatasetButton();
         }
 
         function renderActiveDatasetSelect() {
@@ -800,6 +812,24 @@
 
         function activeDatasetProfile() {
             return datasetProfiles.find((profile) => profile.name === activeDataset) || null;
+        }
+
+        function syncWorkflowFromActiveProfile() {
+            const profile = activeDatasetProfile();
+            if (!profile) return;
+            const wf = profile.workflow || {};
+            if (wf.emotionLabel) {
+                emotionLabelInput.value = wf.emotionLabel;
+            }
+            if (wf.dialectLabel !== undefined) {
+                dialectLabelInput.value = wf.dialectLabel;
+            }
+            if (wf.taskMode) {
+                taskModeInput.value = wf.taskMode;
+            }
+            if (wf.speakerProfile) {
+                speakerProfileInput.value = wf.speakerProfile;
+            }
         }
 
         async function createDatasetProfile() {
@@ -1272,6 +1302,9 @@
                     startTime: segment.startTime,
                     endTime: segment.endTime,
                     ...workflow,
+                    // live UI values override profile defaults
+                    emotionLabel: emotionLabelInput.value || workflow.emotionLabel,
+                    dialectLabel: dialectLabelInput.value.trim() || workflow.dialectLabel,
                 });
             }
 

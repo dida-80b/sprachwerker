@@ -155,13 +155,13 @@ UI_COPY = {
         "settings_group_base_help": "Lege hier fest, ob der Datensatz fuer TTS, ASR oder beides gedacht ist. Mehrere Sprecher sind aktuell nur fuer reine ASR-Datensaetze sinnvoll und erlaubt.",
         "tts_multispeaker_warning": "Mehrere Sprecher sind aktuell nur fuer reine ASR-Datensaetze erlaubt. Fuer TTS oder Mischsaetze wird automatisch auf einen Sprecher begrenzt.",
         "settings_group_language_help": "Hier geht es im Studio nur noch um Sprache bzw. Dialekt. Der Audiotyp bleibt intern auf clean und wird spaeter bei Imports separat gesetzt.",
-        "settings_group_style_help": "Hier waehlt man nur die Ziel-Emotion fuer diesen Datensatz. Fuer Piper-nahe Workflows halten wir das bewusst als feste, einfache Liste.",
+        "settings_group_style_help": "Standard-Emotion fuer neue Aufnahmen. Kann jederzeit geaendert werden — kein neues Profil noetig. Piper reagiert dann automatisch passend.",
         "dataset_select_label": "Aktiver Datensatz",
         "dataset_select_hint": "Datensatzprofil einmal anlegen, danach hier nur noch auswaehlen und aufnehmen.",
         "dataset_create_name": "Datensatzname",
         "dataset_create_name_hint": "z. B. xyz-niederbairisch-drunken. Nach dem Anlegen bleibt das Profil fix.",
         "dataset_create_button": "Datensatz anlegen",
-        "dataset_create_note": "Alle Metadaten unten gelten nur beim ersten Anlegen. Spaeter wird das Profil automatisch wiederverwendet.",
+        "dataset_create_note": "Name und Grundeinstellungen werden einmalig festgelegt. Emotion und Dialekt kann man danach jederzeit aendern.",
         "dataset_profiles_title": "Vorhandene Datensaetze",
         "dataset_profile_locked": "Profil fixiert",
         "dataset_profile_missing": "Bitte zuerst einen Datensatz anlegen.",
@@ -342,13 +342,13 @@ UI_COPY = {
         "settings_group_base_help": "Define whether the dataset is meant for TTS, ASR or both. Multiple speakers are currently only allowed for pure ASR datasets.",
         "tts_multispeaker_warning": "Multiple speakers are currently only allowed for pure ASR datasets. TTS and mixed datasets are forced to a single speaker.",
         "settings_group_language_help": "Inside the studio this is now only about language and dialect. Audio domain stays internally on clean and can be set later by import workflows.",
-        "settings_group_style_help": "Choose only the target emotion for this dataset. For Piper-like workflows this stays a fixed and simple list.",
+        "settings_group_style_help": "Default emotion for new recordings. Can be changed at any time — no new profile needed. Piper reacts automatically.",
         "dataset_select_label": "Active dataset",
         "dataset_select_hint": "Create the dataset profile once, then only select it here and record.",
         "dataset_create_name": "Dataset name",
         "dataset_create_name_hint": "for example xyz-lower-bavarian-drunken. After creation the profile stays fixed.",
         "dataset_create_button": "Create dataset",
-        "dataset_create_note": "The metadata below only applies when the dataset is created for the first time. Later the stored profile is reused automatically.",
+        "dataset_create_note": "Name and base settings are set once. Emotion and dialect can be changed at any time afterwards.",
         "dataset_profiles_title": "Existing datasets",
         "dataset_profile_locked": "Profile locked",
         "dataset_profile_missing": "Please create a dataset first.",
@@ -908,18 +908,36 @@ def sanitize_item_id(item_id: str | None) -> str:
 
 def clean_generated_prompt(text: str) -> str:
     cleaned = text.replace("\r", " ").strip()
-    for marker in ("Neuer Prompt:", "Prompt:", "Frage:"):
+    for marker in (
+        "Neuer Prompt:", "New prompt:",
+        "Witz:", "Joke:",
+        "Aussage:", "Statement:",
+        "Geheimnis:", "Secret:",
+        "Frage:", "Question:",
+        "Prompt:",
+    ):
         if marker in cleaned:
             cleaned = cleaned.split(marker, 1)[-1].strip()
+            break
     cleaned = re.sub(r"\[end of text\].*", "", cleaned, flags=re.IGNORECASE | re.DOTALL).strip()
     cleaned = re.sub(r"\s+", " ", cleaned)
     cleaned = re.sub(r"^(User|Assistant|System)\s*:\s*", "", cleaned, flags=re.IGNORECASE)
-    return cleaned.strip(" \"'")
+    # Anführungszeichen entfernen die das Modell manchmal um den Output setzt
+    cleaned = cleaned.strip()
+    cleaned = re.sub(r'^[„"\']|[""\']+$', "", cleaned).strip()
+    return cleaned
 
 
 def extract_completion_text(output: str) -> str:
     cleaned_output = output
-    for marker in ("Neuer Prompt:", "Prompt:", "Frage:"):
+    for marker in (
+        "Neuer Prompt:", "New prompt:",
+        "Witz:", "Joke:",
+        "Aussage:", "Statement:",
+        "Geheimnis:", "Secret:",
+        "Frage:", "Question:",
+        "Prompt:",
+    ):
         if marker in cleaned_output:
             cleaned_output = cleaned_output.split(marker)[-1]
             break
@@ -958,12 +976,19 @@ def dataset_profile_for_prompt(language: str, dataset: str) -> dict[str, Any]:
     return profiles.get(dataset, {})
 
 
-def fallback_dialog_prompt(language: str, prompt_type: str, history: list[str], dataset: str = "") -> str:
+def fallback_dialog_prompt(language: str, prompt_type: str, history: list[str], dataset: str = "", emotion_override: str = "") -> str:
     ui_lang = "de" if language.lower().startswith("de") else "en"
     # Emotion-Actor-Fallback: feste Texte aus EMOTION_ACTOR_TEMPLATES
-    if prompt_type == "emotion" and dataset:
+    if dataset:
         profile = dataset_profile_for_prompt(language, dataset)
-        emotion = (profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip()
+        stored_emotion = (profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip()
+    else:
+        stored_emotion = DEFAULT_EMOTION_LABEL
+    emotion = emotion_override.strip() if emotion_override.strip() else stored_emotion
+    # Auto-promote to emotion mode when non-neutral emotion is active
+    if emotion and emotion != "neutral" and prompt_type == "random":
+        prompt_type = "emotion"
+    if prompt_type == "emotion":
         if emotion in EMOTION_ACTOR_TEMPLATES:
             options = list(EMOTION_ACTOR_TEMPLATES[emotion].get("fallback", []))
             if options:
@@ -984,14 +1009,19 @@ def build_dialog_prompt_request(
     prompt_type: str,
     prompt_length: str,
     history: list[str],
+    emotion_override: str = "",
 ) -> str:
     profile = dataset_profile_for_prompt(language, dataset)
     ui_lang = "de" if language.lower().startswith("de") else "en"
-    prompt_type = prompt_type if prompt_type in PROMPT_TYPE_GUIDANCE else "random"
     prompt_length = prompt_length if prompt_length in {"short", "medium"} else "short"
     max_words = 12 if prompt_length == "short" else 20
     dialect = (profile.get("dialectLabel") or "").strip() or ("Deutsch" if ui_lang == "de" else "German")
-    emotion = (profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip()
+    emotion = emotion_override.strip() if emotion_override.strip() else (profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip()
+    # Auto-promote to emotion mode when a non-neutral emotion is set
+    if prompt_type not in PROMPT_TYPE_GUIDANCE:
+        prompt_type = "random"
+    if emotion and emotion != "neutral" and prompt_type == "random":
+        prompt_type = "emotion"
     task_mode = profile.get("taskMode") or DEFAULT_TASK_MODE
     history_text = "\n".join(f"- {entry}" for entry in history[-6:] if entry.strip()) or "- (keine)"
     # Emotion-Actor-Modus: Piper agiert, User reagiert
@@ -1947,25 +1977,26 @@ async def dialog_prompt(request: Request) -> JSONResponse:
     dataset = sanitize_dataset_name(payload.get("dataset"))
     prompt_type = str(payload.get("promptType") or "random").strip().lower()
     prompt_length = str(payload.get("promptLength") or "short").strip().lower()
+    emotion_override = str(payload.get("emotion") or "").strip().lower()
     history = payload.get("history") or []
     if not dataset:
         return JSONResponse(status_code=400, content={"success": False, "error": "Dataset required"})
 
-    prompt_request = build_dialog_prompt_request(language, dataset, prompt_type, prompt_length, history if isinstance(history, list) else [])
     history_list = history if isinstance(history, list) else []
+    prompt_request = build_dialog_prompt_request(language, dataset, prompt_type, prompt_length, history_list, emotion_override)
     backend_warning = ""
     error_detail = ""
     async with gpu_lock:
         try:
             prompt_text = await run_text_completion(prompt_request, VOXTRAL_PROMPT_MAX_TOKENS)
         except TimeoutError as exc:
-            prompt_text = fallback_dialog_prompt(language, prompt_type, history_list, dataset)
+            prompt_text = fallback_dialog_prompt(language, prompt_type, history_list, dataset, emotion_override)
             backend = "fallback-timeout"
             error_detail = str(exc)
             backend_warning = f"Voxtral Timeout: {error_detail}"
             logger.warning("dialog/prompt fallback due to timeout: %s", error_detail)
         except Exception as exc:
-            prompt_text = fallback_dialog_prompt(language, prompt_type, history_list, dataset)
+            prompt_text = fallback_dialog_prompt(language, prompt_type, history_list, dataset, emotion_override)
             backend = f"fallback-error:{type(exc).__name__}"
             error_detail = str(exc)
             backend_warning = f"Voxtral Fehler ({type(exc).__name__}): {error_detail}"
@@ -2158,9 +2189,9 @@ async def segment_review_save(request: Request) -> JSONResponse:
             "audio_domain": profile.get("audioDomain", DEFAULT_AUDIO_DOMAIN),
             "target_engine": profile.get("targetEngine", DEFAULT_TARGET_ENGINE),
             "speaker_profile": profile.get("speakerProfile", DEFAULT_SPEAKER_PROFILE),
-            "dialect_label": (profile.get("dialectLabel") or DEFAULT_DIALECT_LABEL).strip(),
+            "dialect_label": (item.get("dialectLabel") or profile.get("dialectLabel") or DEFAULT_DIALECT_LABEL).strip(),
             "style_label": (profile.get("styleLabel") or DEFAULT_STYLE_LABEL).strip(),
-            "emotion_label": (profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip(),
+            "emotion_label": (item.get("emotionLabel") or profile.get("emotionLabel") or DEFAULT_EMOTION_LABEL).strip(),
             "recording_quality": profile.get("recordingQuality", DEFAULT_RECORDING_QUALITY),
             "tts_suitability": profile.get("ttsSuitability", DEFAULT_TTS_SUITABILITY),
         }
