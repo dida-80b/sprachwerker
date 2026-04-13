@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+output/
+.env
+.env.local
+.DS_Store
+
+# Local runtime/binary artifacts
+llama-server
+libggml*.so*
+libllama.so*
+libmtmd.so*
+docs/SESSION_HANDOFF*.md

@@ -1,0 +1,137 @@
+services:
+  piper:
+    build:
+      context: ./piper
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_NAME:-sprachwerker}-piper
+    network_mode: host
+    environment:
+      - PORT=${PIPER_PORT:-5150}
+      - DEFAULT_VOICE=${PIPER_DEFAULT_VOICE:-de_DE-thorsten-high}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HSA_OVERRIDE_GFX_VERSION=11.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:${PIPER_PORT:-5150}/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  llama-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.llama-builder
+      args:
+        BASE_IMAGE: ${LLAMA_BUILDER_BASE_IMAGE:-rocm/dev-ubuntu-22.04:6.3.4-complete}
+    container_name: ${CONTAINER_NAME:-sprachwerker}-llama-builder
+    working_dir: /app
+    environment:
+      - LLAMA_BACKEND=${LLAMA_BACKEND:-rocm}
+      - LLAMA_REPO=${LLAMA_REPO:-https://github.com/ggml-org/llama.cpp.git}
+      - LLAMA_REF=${LLAMA_REF:-master}
+      - AMDGPU_TARGETS=${AMDGPU_TARGETS:-}
+      - CUDA_DOCKER_ARCH=${CUDA_DOCKER_ARCH:-}
+      - LLAMA_CMAKE_EXTRA_ARGS=${LLAMA_CMAKE_EXTRA_ARGS:-}
+      - LLAMA_FORCE_REBUILD=${LLAMA_FORCE_REBUILD:-0}
+      - LLAMA_ARTIFACT_DIR=/artifacts
+      - LLAMA_SRC_DIR=/work/llama.cpp
+    volumes:
+      - llama-bin:/artifacts
+      - llama-src:/work
+    command: ["bash", "/app/scripts/build_llama_cpp.sh"]
+    restart: "no"
+
+  model-fetcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${ASR_BASE_IMAGE:-rocm/dev-ubuntu-22.04:6.3.4-complete}
+    container_name: ${CONTAINER_NAME:-sprachwerker}-model-fetcher
+    working_dir: /app
+    environment:
+      - MODEL_DIR=/models
+      - HF_TOKEN=${HF_TOKEN:-}
+      - VOXTRAL_HF_REPO=${VOXTRAL_HF_REPO:-bartowski/mistralai_Voxtral-Small-24B-2507-GGUF}
+      - VOXTRAL_MODEL_FILENAME=${VOXTRAL_MODEL_FILENAME:-mistralai_Voxtral-Small-24B-2507-Q4_K_M.gguf}
+      - VOXTRAL_MMPROJ_FILENAME=${VOXTRAL_MMPROJ_FILENAME:-mmproj-mistralai_Voxtral-Small-24B-2507-f16.gguf}
+    volumes:
+      - voxtral-models:/models
+    command: ["python3", "/app/scripts/ensure_models.py"]
+    restart: "no"
+
+  asr-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BASE_IMAGE: ${ASR_BASE_IMAGE:-rocm/dev-ubuntu-22.04:6.3.4-complete}
+    container_name: ${CONTAINER_NAME:-sprachwerker}
+    depends_on:
+      piper:
+        condition: service_healthy
+      llama-builder:
+        condition: service_completed_successfully
+      model-fetcher:
+        condition: service_completed_successfully
+    network_mode: host
+    working_dir: /app
+    environment:
+      - PORT=${PORT:-8095}
+      - OUTPUT_DIR=/app/output
+      - APP_TITLE=${APP_TITLE:-Sprachwerker Studio}
+      - DIALECT_NAME=${DIALECT_NAME:-Speech Collection}
+      - SOURCE_LANGUAGE_CODE=${SOURCE_LANGUAGE_CODE:-de-DE}
+      - APP_REGION_GROUP=${APP_REGION_GROUP:-germany}
+      - SOURCE_TEXT_LABEL=${SOURCE_TEXT_LABEL:-Dialect / Raw transcript}
+      - TARGET_TEXT_LABEL=${TARGET_TEXT_LABEL:-Approved text}
+      - DATASET_PLACEHOLDER=${DATASET_PLACEHOLDER:-new-dataset-bulk}
+      - TRANSLATION_ENABLED=${TRANSLATION_ENABLED:-1}
+      - TTS_TARGET_HOURS=${TTS_TARGET_HOURS:-10}
+      - ASR_TARGET_HOURS=${ASR_TARGET_HOURS:-3}
+      - UI_DEFAULT_LANG=${UI_DEFAULT_LANG:-}
+      - DEFAULT_TASK_MODE=${DEFAULT_TASK_MODE:-both}
+      - DEFAULT_AUDIO_DOMAIN=${DEFAULT_AUDIO_DOMAIN:-clean}
+      - DEFAULT_TARGET_ENGINE=${DEFAULT_TARGET_ENGINE:-custom}
+      - DEFAULT_SPEAKER_PROFILE=${DEFAULT_SPEAKER_PROFILE:-single_speaker}
+      - DEFAULT_DIALECT_LABEL=${DEFAULT_DIALECT_LABEL:-}
+      - REVIEW_SUBDIR=${REVIEW_SUBDIR:-_sprachwerker}
+      - OLLAMA_ENDPOINT=${OLLAMA_ENDPOINT:-http://127.0.0.1:11434/api/generate}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3.5-tel:latest}
+      - PIPER_URL=${PIPER_URL:-http://127.0.0.1:5150}
+      - PIPER_DEFAULT_VOICE=${PIPER_DEFAULT_VOICE:-de_DE-thorsten-high}
+      - HIP_VISIBLE_DEVICES=${HIP_VISIBLE_DEVICES:-0}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - VOXTRAL_HF_REPO=${VOXTRAL_HF_REPO:-bartowski/mistralai_Voxtral-Small-24B-2507-GGUF}
+      - VOXTRAL_MODEL_FILENAME=${VOXTRAL_MODEL_FILENAME:-mistralai_Voxtral-Small-24B-2507-Q4_K_M.gguf}
+      - VOXTRAL_MMPROJ_FILENAME=${VOXTRAL_MMPROJ_FILENAME:-mmproj-mistralai_Voxtral-Small-24B-2507-f16.gguf}
+      - VOXTRAL_CLI_PATH=${VOXTRAL_CLI_PATH:-/opt/llama-bin/llama-mtmd-cli}
+      - VOXTRAL_TEXT_CLI_PATH=${VOXTRAL_TEXT_CLI_PATH:-/opt/llama-bin/llama-completion}
+      - VOXTRAL_MODEL_PATH=${VOXTRAL_MODEL_PATH:-/models/mistralai_Voxtral-Small-24B-2507-Q4_K_M.gguf}
+      - VOXTRAL_MMPROJ_PATH=${VOXTRAL_MMPROJ_PATH:-/models/mmproj-mistralai_Voxtral-Small-24B-2507-f16.gguf}
+      - VOXTRAL_LD_LIBRARY_PATH=${VOXTRAL_LD_LIBRARY_PATH:-/opt/llama-bin}
+      - VOXTRAL_GPU_LAYERS=${VOXTRAL_GPU_LAYERS:-72}
+      - VOXTRAL_CTX=${VOXTRAL_CTX:-2048}
+      - VOXTRAL_BATCH=${VOXTRAL_BATCH:-512}
+      - VOXTRAL_UBATCH=${VOXTRAL_UBATCH:-128}
+      - VOXTRAL_MAX_TOKENS=${VOXTRAL_MAX_TOKENS:-96}
+      - VOXTRAL_TIMEOUT_SECONDS=${VOXTRAL_TIMEOUT_SECONDS:-120}
+      - VOXTRAL_PROMPT_MAX_TOKENS=${VOXTRAL_PROMPT_MAX_TOKENS:-48}
+      - VOXTRAL_PROMPT_TIMEOUT_SECONDS=${VOXTRAL_PROMPT_TIMEOUT_SECONDS:-90}
+    volumes:
+      - ${OUTPUT_HOST_DIR:-./output}:/app/output
+      - llama-bin:/opt/llama-bin:ro
+      - voxtral-models:/models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT:-8095}/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  llama-bin:
+  llama-src:
+  voxtral-models:

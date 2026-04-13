@@ -1,0 +1,6 @@
+services:
+  llama-builder:
+    gpus: all
+
+  asr-api:
+    gpus: all

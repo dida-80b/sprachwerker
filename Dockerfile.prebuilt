@@ -1,0 +1,17 @@
+FROM ubuntu:24.04
+
+RUN apt-get update && apt-get install -y \
+    libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY llama-server /usr/local/bin/
+COPY libggml.so libggml.so.0 /usr/local/lib/
+COPY libggml-base.so libggml-base.so.0 /usr/local/lib/
+COPY libggml-cpu.so libggml-cpu.so.0 /usr/local/lib/
+COPY libllama.so libllama.so.0 /usr/local/lib/  
+COPY libmtmd.so libmtmd.so.0 /usr/local/lib/
+RUN ldconfig
+
+EXPOSE 18183
+
+ENTRYPOINT ["/usr/local/bin/llama-server"]

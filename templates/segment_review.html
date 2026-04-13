@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="{{ ui_config.uiLanguage }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ ui_config.appTitle }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="/static/segment-review.css?v={{ ui_config.appVersion }}" rel="stylesheet">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div>
+                <div class="eyebrow">{{ ui_strings.eyebrow }}</div>
+                <h1 id="appTitle">{{ ui_config.appTitle }}</h1>
+                <p class="hero-copy" id="heroCopy">
+                    {{ ui_strings.hero_copy }}
+                </p>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="panel studio-tabs-panel">
+                <div class="tab-strip" role="tablist" aria-label="Studio tabs">
+                    <button id="studioTabRecording" class="tab-button active" type="button">{{ ui_strings.toggle_recording }}</button>
+                    <span class="tab-separator" aria-hidden="true">|</span>
+                    <button id="studioTabCheckup" class="tab-button" type="button">{{ ui_strings.toggle_checkup }}</button>
+                    <span class="tab-separator" aria-hidden="true">|</span>
+                    <button id="studioTabDatasets" class="tab-button" type="button">{{ ui_strings.toggle_datasets }}</button>
+                    <span class="tab-separator" aria-hidden="true">|</span>
+                    <button id="studioTabSettings" class="tab-button" type="button">{{ ui_strings.toggle_settings }}</button>
+                </div>
+            </section>
+
+            <section class="panel recording-panel" id="recordingSection">
+                <div class="panel-head">
+                    <h2>{{ ui_strings.recording_workspace }}</h2>
+                    <div class="dataset-head-stats">
+                        <span class="pill" id="activeDatasetBadge">{{ ui_strings.dataset_profile_missing }}</span>
+                        <button id="openSettingsFromRecording" class="btn btn-sm btn-outline-light" type="button">{{ ui_strings.open_settings }}</button>
+                    </div>
+                </div>
+                <div id="dialogPanel" class="dialog-panel dialog-panel-simple">
+                    <div class="dialog-card prompt-stage-card">
+                        <div class="prompt-stage-head">
+                            <div class="settings-group-title">{{ ui_strings.dialog_prompt_current }}</div>
+                            <div class="prompt-stage-pills">
+                                <span class="pill mono" id="dialogPromptCountdown">{{ ui_strings.dialog_countdown_idle }}</span>
+                                <span class="pill" id="dialogPromptMode">{{ ui_strings.dialog_mode_idle }}</span>
+                            </div>
+                        </div>
+                        <div id="dialogPromptText" class="dialog-prompt-text prompt-stage-text mt-3">{{ ui_strings.dialog_prompt_empty }}</div>
+                        <div class="prompt-stage-footer">
+                            <div id="dialogPromptStatus" class="status-copy prompt-status-inline">{{ ui_strings.dialog_prompt_status_ready }}</div>
+                            <div class="subtle">{{ ui_strings.recording_workspace_note }}</div>
+                            <div class="subtle">{{ ui_strings.space_hint_idle }}</div>
+                        </div>
+                        <div class="prompt-stage-actions" hidden>
+                            <button id="dialogPromptGenerate" class="btn btn-outline-warning" type="button">{{ ui_strings.dialog_prompt_generate }}</button>
+                            <button id="dialogPromptNext" class="btn btn-outline-info" type="button">{{ ui_strings.dialog_prompt_next }}</button>
+                            <button id="dialogPromptRepeat" class="btn btn-outline-light" type="button">{{ ui_strings.dialog_prompt_repeat }}</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="record-strip record-strip-simple">
+                    <div>
+                        <div class="status-copy" id="recordStatus">{{ ui_strings.record_ready }}</div>
+                        <div class="record-actions compact-actions">
+                            <button id="btnStartCycle" class="btn btn-sm btn-danger">{{ ui_strings.record_start }}</button>
+                            <button id="btnPauseCycle" class="btn btn-sm btn-outline-warning">{{ ui_strings.record_pause }}</button>
+                            <button id="btnPromptToggle" class="btn btn-sm btn-outline-light" hidden>{{ ui_strings.record_stop_play }}</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="meter-header">
+                            <span class="pill" id="recordingState">{{ ui_strings.record_idle }}</span>
+                            <span class="pill mono" id="timer">00:00</span>
+                        </div>
+                        <div class="meter"><div class="meter-fill" id="meterFill"></div></div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <button id="btnAsrAll" class="btn btn-info" disabled>{{ ui_strings.asr_all }}</button>
+                    <button id="btnSaveApproved" class="btn btn-success" disabled>{{ ui_strings.save_approved }}</button>
+                    <span class="status-inline" id="saveStatus"></span>
+                </div>
+
+                <div class="segment-list" id="segments"></div>
+            </section>
+
+            <section class="panel overview-panel" id="checkupSection" hidden>
+                <div class="panel-head">
+                    <h2>{{ ui_strings.checkup_title }}</h2>
+                    <span class="pill" id="checkupSummary">0 h</span>
+                </div>
+                <div class="checkup-grid compact">
+                    <div class="checkup-card">
+                        <div class="checkup-title">{{ ui_strings.tts_goal }}</div>
+                        <div class="checkup-metric" id="ttsMetric">0 / 0 h</div>
+                        <div class="progress-track"><div class="progress-fill" id="ttsProgress"></div></div>
+                        <div class="subtle">{{ ui_strings.tts_hint }}</div>
+                    </div>
+                    <div class="checkup-card">
+                        <div class="checkup-title">{{ ui_strings.asr_goal }}</div>
+                        <div class="checkup-metric" id="asrMetric">0 / 0 h</div>
+                        <div class="progress-track"><div class="progress-fill alt" id="asrProgress"></div></div>
+                        <div class="subtle" id="asrNote">{{ ui_strings.asr_hint }}</div>
+                    </div>
+                </div>
+                <div class="bucket-progress" id="bucketProgress"></div>
+                <div class="quality-grid">
+                    <div class="quality-card">
+                        <div class="panel-head compact">
+                            <h3>{{ ui_strings.duplicate_title }}</h3>
+                            <span class="pill" id="duplicateCount">0</span>
+                        </div>
+                        <div id="duplicateList" class="quality-list"></div>
+                    </div>
+                    <div class="quality-card">
+                        <div class="panel-head compact">
+                            <h3>{{ ui_strings.similar_title }}</h3>
+                            <span class="pill" id="similarCount">0</span>
+                        </div>
+                        <div id="similarList" class="quality-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel" id="datasetsSection" hidden>
+                <div class="panel-head">
+                    <h2>{{ ui_strings.datasets_title }}</h2>
+                    <div class="dataset-head-stats">
+                        <span class="pill" id="datasetCount">0</span>
+                        <span class="pill" id="itemCount">0</span>
+                    </div>
+                </div>
+                <div class="dataset-list accordion-list" id="datasetList"></div>
+            </section>
+
+            <section class="panel" id="settingsSection" hidden>
+                <div class="panel-head">
+                    <h2>{{ ui_strings.toggle_settings }}</h2>
+                    <button id="openHelpWindowMenu" class="btn btn-sm btn-outline-warning" type="button">{{ ui_strings.open_help_window }}</button>
+                </div>
+                <div class="help-grid">
+                    <div class="help-card settings-span">
+                        <h3>{{ ui_strings.settings_workflow }}</h3>
+                        <div class="settings-groups">
+                            <div class="settings-group">
+                                <div class="settings-group-title">{{ ui_strings.dataset_select_label }}</div>
+                                <div class="subtle mt-2">{{ ui_strings.dataset_select_hint }}</div>
+                                <div class="field-block mt-3">
+                                    <label for="activeDatasetSelect">{{ ui_strings.dataset_select_label }}</label>
+                                    <select id="activeDatasetSelect"></select>
+                                </div>
+                                <div class="subtle mt-2">{{ ui_strings.dataset_bucket_hint }}: <span class="mono">-kurz</span>, <span class="mono">-mittel</span>, <span class="mono">-lang</span>, <span class="mono">-sehr-lang</span>.</div>
+                            </div>
+                            <div class="settings-group">
+                                <div class="settings-group-title">{{ ui_strings.dialog_title }}</div>
+                                <div class="subtle mt-2">{{ ui_strings.dialog_note }}</div>
+                                <div class="dialog-controls mt-3">
+                                    <div class="field-block">
+                                        <label for="dialogPromptType">{{ ui_strings.dialog_prompt_type }}</label>
+                                        <select id="dialogPromptType">
+                                            <option value="everyday">{{ ui_strings.dialog_prompt_type_everyday }}</option>
+                                            <option value="question">{{ ui_strings.dialog_prompt_type_question }}</option>
+                                            <option value="story">{{ ui_strings.dialog_prompt_type_story }}</option>
+                                            <option value="emotion">{{ ui_strings.dialog_prompt_type_emotion }}</option>
+                                            <option value="random" selected>{{ ui_strings.dialog_prompt_type_random }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-block">
+                                        <label for="dialogPromptLength">{{ ui_strings.dialog_prompt_length }}</label>
+                                        <select id="dialogPromptLength">
+                                            <option value="short" selected>{{ ui_strings.dialog_prompt_length_short }}</option>
+                                            <option value="medium">{{ ui_strings.dialog_prompt_length_medium }}</option>
+                                        </select>
+                                    </div>
+                                    <div class="field-block">
+                                        <label for="dialogVoiceSelect">{{ ui_strings.dialog_tts_voice }}</label>
+                                        <select id="dialogVoiceSelect">
+                                            <option value="">{{ ui_strings.dialog_voice_loading }}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="help-card settings-span">
+                        <h3>{{ ui_strings.dataset_create_button }}</h3>
+                        <div class="field-block">
+                            <label for="createDatasetName">{{ ui_strings.dataset_create_name }}</label>
+                            <input id="createDatasetName" value="" placeholder="{{ ui_strings.dataset_create_name_hint }}" />
+                        </div>
+                        <div class="dataset-actions mt-3">
+                            <button id="createDatasetButton" class="btn btn-sm btn-outline-warning" type="button">{{ ui_strings.dataset_create_button }}</button>
+                            <span class="subtle">{{ ui_strings.dataset_create_note }}</span>
+                        </div>
+                        <div class="settings-groups">
+                            <div class="settings-group">
+                                <div class="settings-group-title">{{ ui_strings.settings_group_base }}</div>
+                                <div class="subtle mt-2">{{ ui_strings.settings_group_base_help }}</div>
+                                <div class="dataset-actions mt-2">
+                                    <select id="taskMode">
+                                        {% for option in ui_config.workflowOptions.task_mode %}
+                                        <option value="{{ option }}" {% if option == ui_config.workflowDefaults.taskMode %}selected{% endif %}>{{ ui_config.workflowOptionLabels.get(option, option) }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <select id="speakerProfile">
+                                        {% for option in ui_config.workflowOptions.speaker_profile %}
+                                        <option value="{{ option }}" {% if option == ui_config.workflowDefaults.speakerProfile %}selected{% endif %}>{{ ui_config.workflowOptionLabels.get(option, option) }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div id="ttsMultiSpeakerWarning" class="subtle warning-note mt-2" hidden>{{ ui_strings.tts_multispeaker_warning }}</div>
+                            </div>
+                            <div class="settings-group">
+                                <div class="settings-group-title">{{ ui_strings.settings_group_language }}</div>
+                                <div class="subtle mt-2">{{ ui_strings.settings_group_language_help }}</div>
+                                <div class="field-block mt-3">
+                                    <label for="dialectLabelInput">{{ ui_strings.dialect_label }}</label>
+                                    <input id="dialectLabelInput" value="{{ ui_config.workflowDefaults.dialectLabel }}" placeholder="{{ ui_strings.dialect_placeholder }}" />
+                                </div>
+                            </div>
+                            <div class="settings-group">
+                                <div class="settings-group-title">{{ ui_strings.settings_group_style }}</div>
+                                <div class="subtle mt-2">{{ ui_strings.settings_group_style_help }}</div>
+                                <div class="dataset-actions mt-2">
+                                    <select id="emotionLabel">
+                                        {% for option in ui_config.workflowOptions.emotion_label %}
+                                        <option value="{{ option }}" {% if option == ui_config.workflowDefaults.emotionLabel %}selected{% endif %}>{{ ui_config.workflowOptionLabels.get(option, option) }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="subtle mt-2">{{ ui_strings.style_hint }}</div>
+                            </div>
+                        </div>
+                        <div class="panel-head compact mt-3">
+                            <h3>{{ ui_strings.dataset_profiles_title }}</h3>
+                        </div>
+                        <div id="datasetProfilesList" class="quality-list mt-2"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel" id="reviewFocusPanel" hidden>
+                <div class="panel-head">
+                    <h2>{{ ui_strings.review_focus_title }}</h2>
+                    <button id="clearReviewFocus" class="btn btn-sm btn-outline-light">{{ ui_strings.close }}</button>
+                </div>
+                <div id="reviewFocusList" class="quality-list"></div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        const config = {{ ui_config | tojson }};
+        const i18n = config.strings || {};
+        const language = config.sourceLanguageCode;
+        const uiLang = config.uiLanguage || 'de';
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let audioBlob = null;
+        let currentPlay = null;
+        let audioContext = null;
+        let analyser = null;
+        let analyserData = null;
+        let meterTimer = null;
+        let recordingStartedAt = 0;
+        let timerInterval = null;
+        let segmentBoundaries = [];
+        let segments = [];
+        let datasets = [];
+        let datasetProfiles = [];
+        let activeDataset = '';
+        let selectedDataset = null;
+        let currentSegmentIndex = -1;
+        let currentPlayUrl = null;
+        let reviewFocusItems = [];
+        let dialogPromptText = '';
+        let dialogPromptHistory = [];
+        let dialogAudio = null;
+        let dialogVoices = [];
+        let dialogMode = 'idle';
+        let countdownTimer = null;
+        let countdownRemaining = 0;
+        let autoCycleEnabled = false;
+        let promptAutoRecord = false;
+
+        const appTitle = document.getElementById('appTitle');
+        const activeDatasetSelect = document.getElementById('activeDatasetSelect');
+        const createDatasetNameInput = document.getElementById('createDatasetName');
+        const createDatasetButton = document.getElementById('createDatasetButton');
+        const datasetProfilesList = document.getElementById('datasetProfilesList');
+        const taskModeInput = document.getElementById('taskMode');
+        const speakerProfileInput = document.getElementById('speakerProfile');
+        const ttsMultiSpeakerWarning = document.getElementById('ttsMultiSpeakerWarning');
+        const dialectLabelInput = document.getElementById('dialectLabelInput');
+        const emotionLabelInput = document.getElementById('emotionLabel');
+        const btnStartCycle = document.getElementById('btnStartCycle');
+        const btnPauseCycle = document.getElementById('btnPauseCycle');
+        const btnPromptToggle = document.getElementById('btnPromptToggle');
+        const btnAsrAll = document.getElementById('btnAsrAll');
+        const btnSaveApproved = document.getElementById('btnSaveApproved');
+        const recordStatus = document.getElementById('recordStatus');
+        const recordingState = document.getElementById('recordingState');
+        const timer = document.getElementById('timer');
+        const meterFill = document.getElementById('meterFill');
+        const saveStatus = document.getElementById('saveStatus');
+        const segmentsEl = document.getElementById('segments');
+        const datasetListEl = document.getElementById('datasetList');
+        const datasetCountEl = document.getElementById('datasetCount');
+        const itemCountEl = document.getElementById('itemCount');
+        const checkupSummary = document.getElementById('checkupSummary');
+        const ttsMetric = document.getElementById('ttsMetric');
+        const asrMetric = document.getElementById('asrMetric');
+        const ttsProgress = document.getElementById('ttsProgress');
+        const asrProgress = document.getElementById('asrProgress');
+        const asrNote = document.getElementById('asrNote');
+        const bucketProgressEl = document.getElementById('bucketProgress');
+        const duplicateCount = document.getElementById('duplicateCount');
+        const duplicateList = document.getElementById('duplicateList');
+        const similarCount = document.getElementById('similarCount');
+        const similarList = document.getElementById('similarList');
+        const reviewFocusPanel = document.getElementById('reviewFocusPanel');
+        const reviewFocusList = document.getElementById('reviewFocusList');
+        const clearReviewFocus = document.getElementById('clearReviewFocus');
+        const recordingSection = document.getElementById('recordingSection');
+        const checkupSection = document.getElementById('checkupSection');
+        const datasetsSection = document.getElementById('datasetsSection');
+        const settingsSection = document.getElementById('settingsSection');
+        const studioTabRecording = document.getElementById('studioTabRecording');
+        const studioTabCheckup = document.getElementById('studioTabCheckup');
+        const studioTabDatasets = document.getElementById('studioTabDatasets');
+        const studioTabSettings = document.getElementById('studioTabSettings');
+        const openSettingsFromRecording = document.getElementById('openSettingsFromRecording');
+        const openHelpWindowMenu = document.getElementById('openHelpWindowMenu');
+        const dialogPanel = document.getElementById('dialogPanel');
+        const dialogPromptType = document.getElementById('dialogPromptType');
+        const dialogPromptLength = document.getElementById('dialogPromptLength');
+        const dialogVoiceSelect = document.getElementById('dialogVoiceSelect');
+        const dialogPromptGenerate = document.getElementById('dialogPromptGenerate');
+        const dialogPromptRepeat = document.getElementById('dialogPromptRepeat');
+        const dialogPromptNext = document.getElementById('dialogPromptNext');
+        const dialogPromptStatus = document.getElementById('dialogPromptStatus');
+        const dialogPromptTextEl = document.getElementById('dialogPromptText');
+        const dialogPromptCountdown = document.getElementById('dialogPromptCountdown');
+        const dialogPromptMode = document.getElementById('dialogPromptMode');
+        const activeDatasetBadge = document.getElementById('activeDatasetBadge');
+        let helpPopup = null;
+        let dialogPromptStatusBase = '';
+        let dialogBackendWarning = '';
+
+        function t(key, fallback = '') {
+            return i18n[key] || fallback || key;
+        }
+
+        function labelize(value) {
+            const key = String(value || '');
+            return (config.workflowOptionLabels && config.workflowOptionLabels[key]) || key.replace(/_/g, ' ');
+        }
+
+        appTitle.textContent = config.appTitle;
+        activeDatasetSelect.addEventListener('change', () => {
+            activeDataset = activeDatasetSelect.value;
+            updateActiveDatasetBadge();
+        });
+
+        btnStartCycle.addEventListener('click', startCycle);
+        btnPauseCycle.addEventListener('click', pauseCycle);
+        btnPromptToggle.addEventListener('click', togglePromptPlayback);
+        btnAsrAll.addEventListener('click', transcribeAllSegments);
+        btnSaveApproved.addEventListener('click', saveApprovedSegments);
+        createDatasetButton.addEventListener('click', createDatasetProfile);
+        studioTabRecording.addEventListener('click', () => setStudioTab('recording'));
+        studioTabCheckup.addEventListener('click', () => setStudioTab('checkup'));
+        studioTabDatasets.addEventListener('click', () => setStudioTab('datasets'));
+        studioTabSettings.addEventListener('click', () => setStudioTab('settings'));
+        openSettingsFromRecording.addEventListener('click', () => setStudioTab('settings'));
+        openHelpWindowMenu.addEventListener('click', openHelpWindow);
+        dialogPromptGenerate.addEventListener('click', () => beginPromptCycle(false));
+        dialogPromptNext.addEventListener('click', () => beginPromptCycle(true));
+        dialogPromptRepeat.addEventListener('click', repeatPromptAudio);
+        taskModeInput.addEventListener('change', updateWorkflowWarnings);
+        speakerProfileInput.addEventListener('change', updateWorkflowWarnings);
+        clearReviewFocus.addEventListener('click', () => {
+            reviewFocusPanel.hidden = true;
+            reviewFocusList.innerHTML = '';
+            reviewFocusItems = [];
+        });
+        setStudioTab('recording');
+        updateWorkflowWarnings();
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code !== 'Space') return;
+            if (event.target.matches('textarea, input')) return;
+            event.preventDefault();
+
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                finishCurrentAnswer();
+                return;
+            }
+
+            if (recordingSection.hidden) return;
+
+            if (dialogMode === 'loading' || dialogMode === 'speaking' || dialogMode === 'starting' || dialogMode === 'processing') return;
+
+            if (dialogPromptText && autoCycleEnabled) {
+                startRecording();
+                return;
+            }
+
+            startCycle();
+        });
+
+        function setStatus(text) {
+            recordStatus.textContent = text;
+        }
+
+        function setSaveStatus(text) {
+            saveStatus.textContent = text;
+        }
+
+        function updateWorkflowWarnings() {
+            const allowMultiSpeaker = taskModeInput.value === 'asr';
+            const multiSpeakerOption = speakerProfileInput.querySelector('option[value="multi_speaker"]');
+            if (multiSpeakerOption) {
+                multiSpeakerOption.disabled = !allowMultiSpeaker;
+            }
+            if (!allowMultiSpeaker && speakerProfileInput.value === 'multi_speaker') {
+                speakerProfileInput.value = 'single_speaker';
+            }
+            ttsMultiSpeakerWarning.hidden = allowMultiSpeaker;
+        }
+
+        function setStudioTab(name) {
+            recordingSection.hidden = name !== 'recording';
+            checkupSection.hidden = name !== 'checkup';
+            datasetsSection.hidden = name !== 'datasets';
+            settingsSection.hidden = name !== 'settings';
+            studioTabRecording.classList.toggle('active', name === 'recording');
+            studioTabCheckup.classList.toggle('active', name === 'checkup');
+            studioTabDatasets.classList.toggle('active', name === 'datasets');
+            studioTabSettings.classList.toggle('active', name === 'settings');
+        }
+
+        function setDialogPromptStatus(text) {
+            dialogPromptStatusBase = text;
+            dialogPromptStatus.textContent = dialogBackendWarning ? `${dialogBackendWarning} ${text}` : text;
+        }
+
+        function setDialogBackendWarning(text = '') {
+            dialogBackendWarning = text.trim();
+            dialogPromptStatus.textContent = dialogBackendWarning ? `${dialogBackendWarning} ${dialogPromptStatusBase}` : dialogPromptStatusBase;
+        }
+
+        function updateCycleButtons() {
+            btnStartCycle.disabled = mediaRecorder?.state === 'recording' || dialogMode === 'loading' || dialogMode === 'speaking' || dialogMode === 'starting';
+            btnPauseCycle.disabled = !autoCycleEnabled && !(mediaRecorder?.state === 'recording') && dialogMode === 'idle';
+            btnPromptToggle.disabled = !dialogPromptText && !dialogAudio;
+            btnPromptToggle.textContent = dialogAudio ? t('record_stop') : t('play');
+        }
+
+        function fallbackToVisualPrompt(detail = '') {
+            const suffix = detail ? ` ${detail}` : '';
+            if (promptAutoRecord && autoCycleEnabled) {
+                setDialogMode('idle');
+                setCountdownDisplay();
+                setStatus(t('record_waiting_next'));
+                setDialogPromptStatus(`${t('dialog_prompt_status_audio_fallback')}${suffix}`);
+                return;
+            }
+            setDialogMode('idle');
+            setDialogPromptStatus(`${t('dialog_prompt_status_audio_fallback')}${suffix}`);
+            updateCycleButtons();
+        }
+
+        function setDialogMode(mode) {
+            dialogMode = mode;
+            const key = {
+                idle: 'dialog_mode_idle',
+                loading: 'dialog_mode_loading',
+                speaking: 'dialog_mode_speaking',
+                countdown: 'dialog_mode_countdown',
+                starting: 'dialog_mode_starting',
+                recording: 'dialog_mode_recording',
+                processing: 'dialog_mode_processing',
+            }[mode] || 'dialog_mode_idle';
+            dialogPromptMode.textContent = t(key);
+            const busy = mode !== 'idle';
+            dialogPromptGenerate.disabled = busy;
+            dialogPromptNext.disabled = busy;
+            dialogPromptRepeat.disabled = busy || !dialogPromptText;
+            updateCycleButtons();
+        }
+
+        function setCountdownDisplay(value = null) {
+            dialogPromptCountdown.textContent = value == null ? t('dialog_countdown_idle') : `${value}s`;
+        }
+
+        function updateActiveDatasetBadge() {
+            activeDatasetBadge.textContent = activeDataset || t('dataset_profile_missing');
+        }
+
+        function renderDialogPromptText() {
+            dialogPromptTextEl.textContent = dialogPromptText || t('dialog_prompt_empty');
+            dialogPromptRepeat.disabled = dialogMode !== 'idle' || !dialogPromptText;
+            updateCycleButtons();
+        }
+
+        function clearCountdown() {
+            if (countdownTimer) {
+                window.clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+            countdownRemaining = 0;
+            setCountdownDisplay();
+        }
+
+        function startCycle() {
+            autoCycleEnabled = true;
+            promptAutoRecord = true;
+            updateCycleButtons();
+            if (mediaRecorder && mediaRecorder.state === 'recording') return;
+            if (dialogAudio) return;
+            if (dialogPromptText) {
+                playPromptText(dialogPromptText, true);
+                return;
+            }
+            beginPromptCycle(true, true);
+        }
+
+        function pauseCycle() {
+            autoCycleEnabled = false;
+            promptAutoRecord = false;
+            clearCountdown();
+            stopDialogAudio();
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                finishCurrentAnswer(false);
+            } else {
+                setDialogMode('idle');
+                setDialogPromptStatus(t('record_paused'));
+            }
+            updateCycleButtons();
+        }
+
+        function togglePromptPlayback() {
+            if (dialogAudio) {
+                stopDialogAudio();
+                setDialogMode('idle');
+                setDialogPromptStatus(t('dialog_prompt_status_stopped'));
+                updateCycleButtons();
+                return;
+            }
+            if (!dialogPromptText) return;
+            playPromptText(dialogPromptText, false);
+        }
+
+        function stopDialogAudio() {
+            if (dialogAudio) {
+                dialogAudio.pause();
+                dialogAudio = null;
+                updateCycleButtons();
+            }
+        }
+
+        async function loadDialogVoices() {
+            try {
+                const response = await fetch('/dialog/voices');
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || t('dialog_voice_error'));
+                }
+                dialogVoices = data.voices || [];
+                const defaultVoice = data.defaultVoice || '';
+                if (!dialogVoices.length) {
+                    dialogVoiceSelect.innerHTML = `<option value="">${escapeHtml(t('dialog_voice_none'))}</option>`;
+                    dialogVoiceSelect.disabled = true;
+                    return;
+                }
+                dialogVoiceSelect.disabled = false;
+                dialogVoiceSelect.innerHTML = dialogVoices.map((voice) => `
+                    <option value="${escapeAttr(voice)}" ${voice === defaultVoice ? 'selected' : ''}>${escapeHtml(voice)}</option>
+                `).join('');
+                if (!dialogVoiceSelect.value && defaultVoice) {
+                    dialogVoiceSelect.value = defaultVoice;
+                }
+            } catch (error) {
+                dialogVoiceSelect.innerHTML = `<option value="">${escapeHtml(t('dialog_voice_error'))}</option>`;
+                dialogVoiceSelect.disabled = true;
+                setDialogPromptStatus(t('dialog_prompt_status_voice_unavailable'));
+            }
+        }
+
+        async function playPromptText(text, autoRecordAfter = false) {
+            if (!text.trim()) return;
+            clearCountdown();
+            promptAutoRecord = autoRecordAfter;
+            setDialogMode('speaking');
+            setStatus(t('dialog_prompt_status_speaking'));
+            setDialogPromptStatus(t('dialog_prompt_status_speaking'));
+            stopDialogAudio();
+            const response = await fetch('/dialog/speak', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, voice: dialogVoiceSelect.value }),
+            });
+            if (!response.ok) {
+                let detail = t('dialog_prompt_status_error');
+                try {
+                    const data = await response.json();
+                    detail = data.error || detail;
+                } catch (_error) {
+                    // keep generic detail
+                }
+                fallbackToVisualPrompt(detail);
+                return;
+            }
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            dialogAudio = new Audio(url);
+            dialogAudio.onended = () => {
+                URL.revokeObjectURL(url);
+                dialogAudio = null;
+                if (promptAutoRecord && autoCycleEnabled) {
+                    setDialogMode('idle');
+                    setCountdownDisplay();
+                    setStatus(t('record_waiting_next'));
+                    setDialogPromptStatus(t('dialog_prompt_status_ready'));
+                    updateCycleButtons();
+                    return;
+                }
+                setDialogMode('idle');
+                setDialogPromptStatus(t('dialog_prompt_status_ready'));
+                updateCycleButtons();
+            };
+            dialogAudio.onerror = () => {
+                URL.revokeObjectURL(url);
+                dialogAudio = null;
+                if (autoRecordAfter && autoCycleEnabled) {
+                    setDialogMode('idle');
+                    setCountdownDisplay();
+                    setStatus(t('record_waiting_next'));
+                    setDialogPromptStatus(t('dialog_prompt_status_error'));
+                    updateCycleButtons();
+                    return;
+                }
+                setDialogMode('idle');
+                setDialogPromptStatus(t('dialog_prompt_status_error'));
+            };
+            await dialogAudio.play();
+        }
+
+        async function generateAndSpeakPrompt(forceNew, autoRecordAfter = false) {
+            const dataset = sanitizeDatasetName(activeDataset);
+            if (!dataset) {
+                setSaveStatus(t('dataset_profile_missing'));
+                setStudioTab('settings');
+                return;
+            }
+            setDialogMode('loading');
+            if (!forceNew && dialogPromptText) {
+                try {
+                    await playPromptText(dialogPromptText, autoRecordAfter);
+                } catch (error) {
+                    setDialogMode('idle');
+                    setDialogPromptStatus(`${t('dialog_prompt_status_error')} ${error.message}`);
+                }
+                return;
+            }
+            setDialogPromptStatus(t('dialog_prompt_status_loading'));
+            try {
+                const response = await fetch('/dialog/prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        language,
+                        dataset,
+                        promptType: dialogPromptType.value,
+                        promptLength: dialogPromptLength.value,
+                        history: dialogPromptHistory,
+                    }),
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error || t('dialog_prompt_status_error'));
+                }
+                if ((data.backend || '').startsWith('fallback-')) {
+                    const detail = (data.warning || data.errorDetail || '').trim();
+                    setDialogBackendWarning(`${t('dialog_prompt_status_backend_fallback')} ${detail}`.trim());
+                } else {
+                    setDialogBackendWarning('');
+                }
+                dialogPromptText = data.promptText || '';
+                if (dialogPromptText) {
+                    dialogPromptHistory.push(dialogPromptText);
+                    dialogPromptHistory = dialogPromptHistory.slice(-10);
+                }
+                renderDialogPromptText();
+                await playPromptText(dialogPromptText, autoRecordAfter);
+            } catch (error) {
+                setDialogMode('idle');
+                setDialogPromptStatus(`${t('dialog_prompt_status_error')} ${error.message}`);
+                setStatus(`${t('dialog_prompt_status_error')} ${error.message}`);
+            }
+        }
+
+        async function beginPromptCycle(forceNew, autoRecordAfter = false) {
+            clearCountdown();
+            try {
+                await generateAndSpeakPrompt(forceNew, autoRecordAfter);
+            } catch (_error) {
+                // status already handled
+            }
+        }
+
+        async function repeatPromptAudio() {
+            if (!dialogPromptText) {
+                setDialogPromptStatus(t('dialog_prompt_empty'));
+                return;
+            }
+            try {
+                clearCountdown();
+                await playPromptText(dialogPromptText, false);
+            } catch (error) {
+                setDialogMode('idle');
+                setDialogPromptStatus(`${t('dialog_prompt_status_error')} ${error.message}`);
+            }
+        }
+
+        function popupHtml(title, body) {
+            return `<!DOCTYPE html>
+<html lang="${escapeAttr(uiLang)}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(title)}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="${escapeAttr(window.location.origin)}/static/segment-review.css?v=${escapeAttr(config.appVersion)}" rel="stylesheet">
+</head>
+<body class="popup-body">
+    <div class="page-shell popup-shell">
+        ${body}
+    </div>
+</body>
+</html>`;
+        }
+
+        async function loadDatasetProfiles(preferred = null) {
+            const response = await fetch(`/segment-review/profiles?language=${encodeURIComponent(language)}`);
+            const data = await response.json();
+            datasetProfiles = data.profiles || [];
+            renderDatasetProfiles();
+            if (preferred) {
+                activeDataset = preferred;
+            } else if (!activeDataset && datasetProfiles.length) {
+                activeDataset = datasetProfiles[0].name;
+            } else if (activeDataset && !datasetProfiles.some((entry) => entry.name === activeDataset)) {
+                activeDataset = datasetProfiles[0]?.name || '';
+            }
+            renderActiveDatasetSelect();
+            updateActiveDatasetBadge();
+        }
+
+        function renderActiveDatasetSelect() {
+            if (!datasetProfiles.length) {
+                activeDatasetSelect.innerHTML = `<option value="">${escapeHtml(t('dataset_profile_missing'))}</option>`;
+                activeDatasetSelect.disabled = true;
+                updateActiveDatasetBadge();
+                return;
+            }
+            activeDatasetSelect.disabled = false;
+            activeDatasetSelect.innerHTML = datasetProfiles.map((profile) => `
+                <option value="${escapeAttr(profile.name)}" ${profile.name === activeDataset ? 'selected' : ''}>${escapeHtml(profile.name)}</option>
+            `).join('');
+            updateActiveDatasetBadge();
+        }
+
+        function renderDatasetProfiles() {
+            if (!datasetProfiles.length) {
+                datasetProfilesList.innerHTML = `<div class="empty nested-empty">${escapeHtml(t('dataset_none'))}</div>`;
+                return;
+            }
+            datasetProfilesList.innerHTML = datasetProfiles.map((profile) => `
+                <div class="quality-item">
+                    <div class="dataset-row">
+                        <strong>${escapeHtml(profile.name)}</strong>
+                        <span class="pill">${escapeHtml(t('dataset_profile_locked'))}</span>
+                        <button class="btn btn-sm btn-outline-danger" style="margin-left:auto" onclick="event.stopPropagation(); confirmDeleteDatasetProfile('${escapeAttr(profile.name)}')">${escapeHtml(t('delete'))}</button>
+                    </div>
+                    <div class="subtle mt-2">${escapeHtml(labelize(profile.workflow?.taskMode || 'both'))} · ${escapeHtml(labelize(profile.workflow?.speakerProfile || 'single_speaker'))}</div>
+                    <div class="subtle">${escapeHtml(profile.workflow?.dialectLabel || '')}${profile.workflow?.emotionLabel ? ` · ${escapeHtml(labelize(profile.workflow.emotionLabel))}` : ''}</div>
+                </div>
+            `).join('');
+        }
+
+        function activeDatasetProfile() {
+            return datasetProfiles.find((profile) => profile.name === activeDataset) || null;
+        }
+
+        async function createDatasetProfile() {
+            const dataset = sanitizeDatasetName(createDatasetNameInput.value || config.datasetPlaceholder);
+            if (!dataset) {
+                setSaveStatus(t('dataset_name_required'));
+                return;
+            }
+            const workflow = {
+                taskMode: taskModeInput.value,
+                audioDomain: 'clean',
+                targetEngine: 'custom',
+                speakerProfile: speakerProfileInput.value,
+                dialectLabel: dialectLabelInput.value.trim(),
+                emotionLabel: emotionLabelInput.value,
+                recordingQuality: 'clean',
+                ttsSuitability: 'approved',
+            };
+            const response = await fetch('/segment-review/profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language, dataset, workflow }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setSaveStatus(data.error || t('dataset_profile_exists'));
+                return;
+            }
+            createDatasetNameInput.value = '';
+            setSaveStatus(`${t('dataset_profile_created')} ${data.dataset}.`);
+            await loadDatasetProfiles(data.dataset);
+            setStudioTab('recording');
+        }
+
+        async function confirmDeleteDatasetProfile(name) {
+            if (!window.confirm(`Profil "${name}" löschen?\n\nNur das Profil wird entfernt — vorhandene Aufnahmen bleiben erhalten.`)) return;
+            const response = await fetch('/segment-review/profiles', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language, dataset: name }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                alert(data.error || 'Fehler beim Löschen');
+                return;
+            }
+            await loadDatasetProfiles();
+        }
+
+        function renderHelpPopupMarkup() {
+            return `
+                <section class="panel help-panel">
+                    <div class="panel-head">
+                        <h2>${escapeHtml(t('help_title'))}</h2>
+                    </div>
+                    <div class="help-content">
+                        <div class="help-grid">
+                            <div class="help-card">
+                                <h3>${escapeHtml(t('help_tts_title'))}</h3>
+                                <p>${escapeHtml(t('help_tts_body_1'))}</p>
+                                <p>${escapeHtml(t('help_tts_body_2'))}</p>
+                            </div>
+                            <div class="help-card">
+                                <h3>${escapeHtml(t('help_asr_title'))}</h3>
+                                <p>${escapeHtml(t('help_asr_body_1'))}</p>
+                                <p>${escapeHtml(t('help_asr_body_2'))}</p>
+                            </div>
+                            <div class="help-card">
+                                <h3>${escapeHtml(t('help_text_title'))}</h3>
+                                <p>${escapeHtml(t('help_text_body_1'))}</p>
+                                <p><strong>Example:</strong> <code>Übermorgen trink ich auf jeden Fall wieder einen Kaffee in der Früh. Weil das geht mir schon ziemlich ab.</code></p>
+                            </div>
+                            <div class="help-card">
+                                <h3>${escapeHtml(t('help_bucket_title'))}</h3>
+                                <p>${escapeHtml(t('help_bucket_body_1'))}</p>
+                                <p>Aus einem Basisnamen wie <code>xyz_niederbayerisch</code> werden dann automatisch Datensätze wie <code>xyz_niederbayerisch-kurz</code>.</p>
+                            </div>
+                            <div class="help-card">
+                                <h3>${escapeHtml(t('help_duplicates_title'))}</h3>
+                                <p>${escapeHtml(t('help_duplicates_body_1'))}</p>
+                                <p>Der Checkup markiert deshalb doppelte und sehr ähnliche Sätze. Das ist nur eine Warnung, keine automatische Löschung.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        function openHelpWindow() {
+            const popup = window.open('', 'sprachwerker-help', 'popup=yes,width=1180,height=900,resizable=yes,scrollbars=yes');
+            if (!popup) {
+                setSaveStatus(t('popup_blocked'));
+                return;
+            }
+            helpPopup = popup;
+            popup.document.open();
+            popup.document.write(popupHtml(`${config.appTitle} · ${t('help_title')}`, renderHelpPopupMarkup()));
+            popup.document.close();
+            popup.focus();
+        }
+
+        function updateTimer() {
+            const seconds = Math.max(0, Math.floor((Date.now() - recordingStartedAt) / 1000));
+            timer.textContent = formatClock(seconds);
+        }
+
+        async function startRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') return;
+            const dataset = sanitizeDatasetName(activeDataset);
+            if (!dataset) {
+                setSaveStatus(t('dataset_profile_missing'));
+                setStudioTab('settings');
+                return;
+            }
+            setDialogMode('starting');
+            stopDialogAudio();
+            clearCountdown();
+            resetAudioPlayer();
+            setSaveStatus('');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+                recordingStartedAt = Date.now();
+                updateTimer();
+                timerInterval = window.setInterval(updateTimer, 250);
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                analyserData = new Uint8Array(analyser.frequencyBinCount);
+                source.connect(analyser);
+
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = async () => {
+                    clearInterval(timerInterval);
+                    stopMeter();
+                    mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+                    audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await appendSegmentFromRecording();
+                };
+                mediaRecorder.start(200);
+
+                btnAsrAll.disabled = true;
+                btnSaveApproved.disabled = true;
+                recordingState.textContent = t('recording');
+                setDialogMode('recording');
+                setStatus(t('record_running'));
+                setDialogPromptStatus(t('dialog_prompt_status_recording'));
+                startMeter();
+            } catch (error) {
+                setDialogMode('idle');
+                setStatus(`${t('dialog_prompt_status_error')} ${error.message}`);
+                updateCycleButtons();
+            }
+        }
+
+        function startMeter() {
+            stopMeter();
+            meterTimer = window.setInterval(() => {
+                if (!analyser || !analyserData) return;
+                analyser.getByteTimeDomainData(analyserData);
+                let sum = 0;
+                for (let i = 0; i < analyserData.length; i++) {
+                    const value = (analyserData[i] - 128) / 128;
+                    sum += value * value;
+                }
+                const rms = Math.sqrt(sum / analyserData.length);
+                meterFill.style.width = `${Math.min(100, rms * 320)}%`;
+            }, 60);
+        }
+
+        function stopMeter() {
+            if (meterTimer) {
+                window.clearInterval(meterTimer);
+                meterTimer = null;
+            }
+            meterFill.style.width = '0%';
+        }
+
+        function finishCurrentAnswer(scheduleNext = true) {
+            if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+            mediaRecorder._scheduleNextPrompt = scheduleNext;
+            setDialogMode('processing');
+            mediaRecorder.stop();
+            recordingState.textContent = t('processing');
+            setStatus(t('record_processing'));
+            setDialogPromptStatus(t('dialog_prompt_status_processing'));
+        }
+
+        async function appendSegmentFromRecording() {
+            const arrayBuffer = await audioBlob.arrayBuffer();
+            const decodeContext = new (window.AudioContext || window.webkitAudioContext)();
+            const buffer = await decodeContext.decodeAudioData(arrayBuffer.slice(0));
+            const duration = buffer.duration;
+            if (duration >= 0.25) {
+                segments.push({
+                    id: `local-${segments.length + 1}`,
+                    startTime: 0,
+                    endTime: duration,
+                    rawText: '',
+                    editedText: '',
+                    approved: false,
+                    saved: false,
+                    qualityRating: '',
+                    qualityReason: '',
+                    audioBlob,
+                });
+            }
+
+            btnAsrAll.disabled = segments.length === 0;
+            btnSaveApproved.disabled = segments.length === 0;
+            recordingState.textContent = t('ready');
+            setDialogMode('idle');
+            setCountdownDisplay();
+            setDialogPromptStatus(t('dialog_prompt_status_processing'));
+            currentSegmentIndex = segments.length ? 0 : -1;
+            setStatus(segments.length ? t('segments_recognized').replace('{count}', String(segments.length)) : t('no_segments_recognized'));
+            renderSegments();
+            updateCycleButtons();
+
+            if (mediaRecorder?._scheduleNextPrompt && autoCycleEnabled) {
+                setStatus(t('dialog_prompt_status_loading'));
+                beginPromptCycle(true, true);
+            }
+        }
+
+        function renderSegments() {
+            if (!segments.length) {
+                segmentsEl.innerHTML = `<div class="empty">${escapeHtml(t('segment_none'))}</div>`;
+                return;
+            }
+
+            segmentsEl.innerHTML = segments.map((segment, index) => `
+                <article class="segment-card quality-${escapeAttr(segment.qualityRating || 'pending')} ${index === currentSegmentIndex ? 'current' : ''} ${segment.saved ? 'saved' : ''}">
+                    <div class="segment-head">
+                        <div>
+                            <strong>${escapeHtml(t('segment_label'))} ${index + 1}</strong>
+                            <div class="subtle">${formatClock(segment.startTime)} bis ${formatClock(segment.endTime)}</div>
+                            <div class="subtle quality-hint">${escapeHtml(t(`quality_${segment.qualityRating || 'pending'}`))}${segment.qualityReason ? ` · ${escapeHtml(segment.qualityReason)}` : ''}</div>
+                        </div>
+                        <div class="segment-tools">
+                            <span class="pill">${segment.saved ? escapeHtml(t('saved')) : segment.approved ? escapeHtml(t('approved')) : escapeHtml(t('open'))}</span>
+                            <button class="btn btn-sm btn-primary" onclick="playSegment(${index})">${escapeHtml(t('play'))}</button>
+                            <button class="btn btn-sm btn-outline-info" onclick="transcribeSegment(${index})">${escapeHtml(t('transcribe'))}</button>
+                            ${config.translationEnabled ? `<button class="btn btn-sm btn-outline-warning" onclick="translateSegment(${index})">${escapeHtml(t('translate'))}</button>` : ''}
+                            <button class="btn btn-sm ${segment.approved ? 'btn-success' : 'btn-outline-success'}" onclick="toggleApproved(${index})">${segment.approved ? escapeHtml(t('approved_action')) : escapeHtml(t('approve'))}</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteDraftSegment(${index})">${escapeHtml(t('delete'))}</button>
+                        </div>
+                    </div>
+                    <div class="segment-grid single">
+                        <div>
+                            <label>${escapeHtml(t('listen_label'))}</label>
+                            <div class="play-stage inline">
+                                <button class="play-orb" onclick="playSegment(${index})" aria-label="Segment abspielen">
+                                    <span class="play-orb-icon">▶</span>
+                                </button>
+                                <div class="voice-visual compact" aria-hidden="true">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <div class="play-meta">
+                                    <div class="play-title">${escapeHtml(t('play'))}</div>
+                                    <div class="subtle">${escapeHtml(t('listen_hint'))}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label>${escapeHtml(t('approved_text_label'))}</label>
+                            <textarea id="edit-${index}" oninput="updateEdited(${index}, this.value)" placeholder="${escapeAttr(t('approved_text_placeholder'))}">${escapeHtml(segment.editedText)}</textarea>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        window.updateEdited = (index, value) => {
+            segments[index].editedText = value;
+        };
+
+        window.toggleApproved = (index) => {
+            segments[index].approved = !segments[index].approved;
+            renderSegments();
+        };
+
+        window.deleteDraftSegment = (index) => {
+            resetAudioPlayer();
+            segments.splice(index, 1);
+            if (currentSegmentIndex >= segments.length) currentSegmentIndex = segments.length - 1;
+            renderSegments();
+        };
+
+        function resetAudioPlayer() {
+            if (currentPlay) {
+                currentPlay.pause();
+                currentPlay = null;
+            }
+            if (currentPlayUrl) {
+                URL.revokeObjectURL(currentPlayUrl);
+                currentPlayUrl = null;
+            }
+        }
+
+        function createSegmentBlob(segment) {
+            return segment.audioBlob || null;
+        }
+
+        function audioBufferToWav(buffer) {
+            const length = buffer.length * 2 + 44;
+            const arrayBuffer = new ArrayBuffer(length);
+            const view = new DataView(arrayBuffer);
+            const channel = buffer.getChannelData(0);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, length - 8, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, buffer.sampleRate, true);
+            view.setUint32(28, buffer.sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, buffer.length * 2, true);
+
+            let offset = 44;
+            for (let i = 0; i < channel.length; i++) {
+                const sample = Math.max(-1, Math.min(1, channel[i]));
+                view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+                offset += 2;
+            }
+
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        window.playSegment = async (index) => {
+            if (!segments[index]?.audioBlob) return;
+            currentSegmentIndex = index;
+            renderSegments();
+            resetAudioPlayer();
+
+            const blob = createSegmentBlob(segments[index]);
+            const url = URL.createObjectURL(blob);
+            currentPlayUrl = url;
+            currentPlay = new Audio(url);
+            currentPlay.onended = () => {
+                if (currentPlayUrl) {
+                    URL.revokeObjectURL(currentPlayUrl);
+                    currentPlayUrl = null;
+                }
+            };
+            currentPlay.play();
+        };
+
+        window.transcribeSegment = async (index) => {
+            if (!segments[index]?.audioBlob) return;
+            const segment = segments[index];
+            currentSegmentIndex = index;
+            renderSegments();
+            setSaveStatus(`${t('transcribe_running')} ${index + 1}...`);
+
+            const blob = createSegmentBlob(segment);
+            const form = new FormData();
+            const ext = blob.type === 'audio/webm' ? 'webm' : 'wav';
+            form.append('audio', blob, `segment-${index + 1}.${ext}`);
+
+            try {
+                const response = await fetch('/transcribe', { method: 'POST', body: form });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'ASR fehlgeschlagen');
+                segment.rawText = data.text || '';
+                segment.editedText = segment.rawText;
+                await evaluateSegmentQuality(index);
+                setSaveStatus(`${t('transcribe_done')} ${index + 1}.`);
+            } catch (error) {
+                segment.rawText = '';
+                segment.editedText = '';
+                segment.qualityRating = '';
+                segment.qualityReason = '';
+                setSaveStatus(`${t('transcribe_error')} ${index + 1}. ${error.message || ''}`.trim());
+            }
+            renderSegments();
+        };
+
+        async function evaluateSegmentQuality(index) {
+            if (!segments[index]?.audioBlob) return;
+            const dataset = sanitizeDatasetName(activeDataset);
+            if (!dataset) return;
+            const segment = segments[index];
+            const blob = createSegmentBlob(segment);
+            const form = new FormData();
+            form.append('audio', blob, `segment-${index + 1}.wav`);
+            form.append('dataset', dataset);
+            form.append('language', language);
+            form.append('transcript', segment.editedText || segment.rawText || '');
+            try {
+                const response = await fetch('/evaluate', { method: 'POST', body: form });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Evaluation fehlgeschlagen');
+                segment.qualityRating = data.rating || '';
+                segment.qualityReason = data.reason || '';
+            } catch (error) {
+                segment.qualityRating = '';
+                segment.qualityReason = '';
+            }
+        }
+
+        async function transcribeAllSegments() {
+            for (let i = 0; i < segments.length; i++) {
+                if (!segments[i].rawText) {
+                    await window.transcribeSegment(i);
+                }
+            }
+        }
+
+        window.translateSegment = async (index) => {
+            const segment = segments[index];
+            const source = (segment.rawText || segment.editedText || '').trim();
+            if (!source) return;
+            setSaveStatus(`${t('translate_running')} ${index + 1}...`);
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: source }),
+                });
+                const data = await response.json();
+                segment.editedText = data.translation || source;
+                setSaveStatus(`${t('translate_done')} ${index + 1}.`);
+            } catch (error) {
+                setSaveStatus(`${t('translate_error')} ${index + 1}.`);
+            }
+            renderSegments();
+        };
+
+        async function saveApprovedSegments() {
+            const dataset = sanitizeDatasetName(activeDataset);
+            const approved = segments.filter((segment) => segment.approved && segment.editedText.trim() && !segment.saved);
+            if (!dataset) {
+                setSaveStatus(t('dataset_profile_missing'));
+                return;
+            }
+            if (!approved.length) {
+                setSaveStatus(t('nothing_to_save'));
+                return;
+            }
+
+            setSaveStatus(t('saving'));
+            const items = [];
+            const profile = activeDatasetProfile();
+            const workflow = profile?.workflow || {};
+            for (const segment of approved) {
+                const blob = createSegmentBlob(segment);
+                const base64 = await blobToBase64(blob);
+                items.push({
+                    audioBase64: base64,
+                    audioExt: 'wav',
+                    text: segment.editedText.trim(),
+                    rawText: segment.rawText.trim(),
+                    startTime: segment.startTime,
+                    endTime: segment.endTime,
+                    ...workflow,
+                });
+            }
+
+            const response = await fetch('/segment-review/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language, dataset, items }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setSaveStatus(data.error || t('save_failed'));
+                return;
+            }
+
+            approved.forEach((segment) => { segment.saved = true; });
+            const savedGroups = Object.entries(data.datasets || {}).map(([name, count]) => `${count} → ${name}`).join(', ');
+            setSaveStatus(savedGroups ? `${data.saved} ${t('saved_segments')}: ${savedGroups}` : `${data.saved} ${t('saved_segments')}.`);
+            renderSegments();
+            await loadDatasets(data.dataset);
+            await loadDatasetProfiles(dataset);
+        }
+
+        async function loadDatasets(preferred = null) {
+            const response = await fetch(`/segment-review/datasets?language=${encodeURIComponent(language)}`);
+            const data = await response.json();
+            datasets = data.datasets || [];
+            datasetCountEl.textContent = String(datasets.length);
+
+            if (preferred) {
+                selectedDataset = datasets.find((dataset) => dataset.name === preferred)?.name || selectedDataset;
+            } else if (!selectedDataset && datasets.length) {
+                selectedDataset = datasets[0].name;
+            } else if (selectedDataset && !datasets.some((dataset) => dataset.name === selectedDataset)) {
+                selectedDataset = datasets[0]?.name || null;
+            }
+
+            renderDatasets();
+            await loadCheckup();
+        }
+
+        async function loadCheckup() {
+            const response = await fetch(`/segment-review/checkup?language=${encodeURIComponent(language)}&ui_lang=${encodeURIComponent(uiLang)}`);
+            const data = await response.json();
+            renderCheckup(data.checkup || null);
+        }
+
+        function renderCheckup(checkup) {
+            if (!checkup) {
+                checkupSummary.textContent = '0 min';
+                bucketProgressEl.innerHTML = '';
+                return;
+            }
+
+            checkupSummary.textContent = formatDurationHours(checkup.totalHours);
+            ttsMetric.textContent = `${formatDurationHours(checkup.tts.hours)} / ${formatDurationHours(checkup.tts.targetHours)}`;
+            asrMetric.textContent = `${formatDurationHours(checkup.asr.hours)} / ${formatDurationHours(checkup.asr.targetHours)}`;
+            ttsProgress.style.width = `${checkup.tts.percent}%`;
+            asrProgress.style.width = `${checkup.asr.percent}%`;
+            asrNote.textContent = checkup.asr.note || '';
+
+            bucketProgressEl.innerHTML = (checkup.bucketProgress || []).map((entry) => `
+                <div class="bucket-card">
+                    <div class="dataset-row">
+                        <strong>${escapeHtml(entry.bucket)}</strong>
+                        <span class="subtle">${formatDurationHours(entry.hours)} / ${formatDurationHours(entry.targetHours)}</span>
+                    </div>
+                    <div class="progress-track small"><div class="progress-fill" style="width:${entry.percent}%"></div></div>
+                </div>
+            `).join('');
+
+            duplicateCount.textContent = String((checkup.duplicates || []).length);
+            duplicateList.innerHTML = (checkup.duplicates || []).length
+                ? (checkup.duplicates || []).map((entry) => `
+                    <details class="quality-item accordion-quality">
+                        <summary class="quality-summary">
+                            <strong>${entry.count}x ${escapeHtml(t('duplicate_x'))}</strong>
+                            <span class="subtle">${escapeHtml(entry.text.slice(0, 90))}${entry.text.length > 90 ? '...' : ''}</span>
+                        </summary>
+                        <div class="quality-body">
+                            <div class="subtle">${entry.items.map((item) => `${escapeHtml(item.dataset)}:${escapeHtml(item.id)}`).join(', ')}</div>
+                            <div class="mt-2">${escapeHtml(entry.text)}</div>
+                            <div class="dataset-actions mt-2">
+                                <button class="btn btn-sm btn-outline-light" onclick='openReviewFocus(${JSON.stringify(entry.items).replace(/'/g, "&apos;")})'>${escapeHtml(t('review'))}</button>
+                                <button class="btn btn-sm btn-outline-warning" onclick='markItemsKeep(${JSON.stringify(entry.items).replace(/'/g, "&apos;")})'>${escapeHtml(t('kept'))}</button>
+                            </div>
+                        </div>
+                    </details>
+                `).join('')
+                : `<div class="empty nested-empty">${escapeHtml(t('duplicate_none'))}</div>`;
+
+            similarCount.textContent = String((checkup.similar || []).length);
+            similarList.innerHTML = (checkup.similar || []).length
+                ? (checkup.similar || []).map((entry) => `
+                    <details class="quality-item accordion-quality">
+                        <summary class="quality-summary">
+                            <strong>${entry.count} ${escapeHtml(t('variants'))}</strong>
+                            <span class="subtle">${Math.round(entry.minScore * 100)}-${Math.round(entry.score * 100)}% ${escapeHtml(t('similar_near'))} · ${escapeHtml(entry.representativeText.slice(0, 72))}${entry.representativeText.length > 72 ? '...' : ''}</span>
+                        </summary>
+                        <div class="quality-body">
+                            <div class="subtle">Nahe Satzfamilie statt Einzelpaare. Erst anhören, dann gezielt entscheiden.</div>
+                            <div class="quality-list mt-2">
+                                ${entry.items.map((item) => `
+                                    <div class="quality-item nested-quality">
+                                        <div class="dataset-row">
+                                            <strong>${escapeHtml(item.dataset)}:${escapeHtml(item.id)}</strong>
+                                            <span class="subtle">${item.keepMarked ? escapeHtml(t('kept')) : escapeHtml(t('open'))}</span>
+                                        </div>
+                                        <div class="mt-1">${escapeHtml(item.text)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <div class="dataset-actions mt-2">
+                                <button class="btn btn-sm btn-outline-light" onclick='openReviewFocus(${JSON.stringify(entry.items).replace(/'/g, "&apos;")})'>${escapeHtml(t('open_in_dataset'))}</button>
+                                <button class="btn btn-sm btn-outline-warning" onclick='markItemsKeep(${JSON.stringify(entry.items).replace(/'/g, "&apos;")})'>${escapeHtml(t('kept'))}</button>
+                            </div>
+                        </div>
+                    </details>
+                `).join('')
+                : `<div class="empty nested-empty">${escapeHtml(t('similar_none'))}</div>`;
+        }
+
+        function renderDatasets() {
+            if (!datasets.length) {
+                datasetListEl.innerHTML = `<div class="empty">${escapeHtml(t('dataset_none'))}</div>`;
+                itemCountEl.textContent = '0';
+                return;
+            }
+
+            const activeDataset = datasets.find((entry) => entry.name === selectedDataset);
+            itemCountEl.textContent = String(activeDataset ? activeDataset.items.length : 0);
+            datasetListEl.innerHTML = datasets.map((dataset) => `
+                <div class="dataset-card accordion-card ${dataset.name === selectedDataset ? 'active open' : ''}">
+                    <div class="dataset-row accordion-toggle" onclick="selectDataset('${escapeAttr(dataset.name)}')">
+                        <div>
+                            <strong>${escapeHtml(dataset.name)}</strong>
+                            <div class="subtle">${dataset.count} ${escapeHtml(t('entries'))}</div>
+                        </div>
+                        <div class="dataset-actions">
+                            <span class="accordion-chevron">${dataset.name === selectedDataset ? '−' : '+'}</span>
+                            ${isLegacyDataset(dataset.name) ? `<button class="btn btn-sm btn-outline-warning" onclick="event.stopPropagation(); migrateLegacyDataset('${escapeAttr(dataset.name)}')">${escapeHtml(t('migrate'))}</button>` : ''}
+                            <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); confirmDeleteDataset('${escapeAttr(dataset.name)}')">${escapeHtml(t('delete'))}</button>
+                        </div>
+                    </div>
+                    ${dataset.name === selectedDataset ? `
+                        <div class="accordion-body">
+                            ${renderDatasetItemsMarkup(dataset)}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function renderDatasetItems() {
+            const dataset = datasets.find((entry) => entry.name === selectedDataset);
+            if (!dataset) {
+                itemCountEl.textContent = '0';
+                renderDatasets();
+                return;
+            }
+            itemCountEl.textContent = String(dataset.items.length);
+            renderDatasets();
+        }
+
+        function renderDatasetItemsMarkup(dataset) {
+            if (!dataset.items.length) {
+                return `<div class="empty nested-empty">${escapeHtml(t('dataset_empty'))}</div>`;
+            }
+
+            return `
+                <div class="dataset-items inline-items">
+                    ${dataset.items.map((item) => `
+                        <article class="dataset-item">
+                            <div class="dataset-row">
+                                <div>
+                                    <strong>${escapeHtml(item.id)}</strong>
+                                    <div class="subtle">${escapeHtml(item.audioPath)}</div>
+                                    ${item.keepMarked ? `<div class="subtle keep-note">${escapeHtml(t('kept'))}</div>` : ''}
+                                </div>
+                                <div class="dataset-actions">
+                                    <button class="btn btn-sm btn-outline-light" onclick="toggleItemEditor('${escapeAttr(dataset.name)}', '${escapeAttr(item.id)}')">${escapeHtml(t('review'))}</button>
+                                    <button class="btn btn-sm btn-outline-warning" onclick="markSingleKeep('${escapeAttr(dataset.name)}', '${escapeAttr(item.id)}')">${item.keepMarked ? escapeHtml(t('unkeep')) : escapeHtml(t('keep'))}</button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteDatasetItem('${escapeAttr(dataset.name)}', '${escapeAttr(item.id)}')">${escapeHtml(t('delete'))}</button>
+                                </div>
+                            </div>
+                            <audio controls preload="none" src="${escapeAttr(item.audioUrl)}"></audio>
+                            <div class="dataset-copy">${escapeHtml(item.text)}</div>
+                            <div class="subtle">${escapeHtml(labelize(item.taskMode))} · ${escapeHtml(labelize(item.speakerProfile))}${item.dialectLabel ? ` · ${escapeHtml(item.dialectLabel)}` : ''}</div>
+                            <div class="subtle">${escapeHtml(labelize(item.emotionLabel || 'neutral'))}</div>
+                            <div class="item-editor" id="editor-${escapeAttr(dataset.name)}-${escapeAttr(item.id)}" hidden>
+                                <textarea id="editor-text-${escapeAttr(dataset.name)}-${escapeAttr(item.id)}">${escapeHtml(item.text)}</textarea>
+                                <div class="dataset-actions mt-2">
+                                    <button class="btn btn-sm btn-success" onclick="saveDatasetItemEdit('${escapeAttr(dataset.name)}', '${escapeAttr(item.id)}')">${escapeHtml(t('save'))}</button>
+                                    <button class="btn btn-sm btn-outline-light" onclick="toggleItemEditor('${escapeAttr(dataset.name)}', '${escapeAttr(item.id)}')">${escapeHtml(t('close'))}</button>
+                                </div>
+                            </div>
+                        </article>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        window.selectDataset = (name) => {
+            selectedDataset = selectedDataset === name ? null : name;
+            renderDatasets();
+        };
+
+        function isLegacyDataset(name) {
+            return !/-((kurz)|(mittel)|(lang)|(sehr-lang)|(zu-lang))$/.test(String(name || ''));
+        }
+
+        window.deleteDataset = async (name) => {
+            await fetch(`/segment-review/datasets/${encodeURIComponent(name)}?language=${encodeURIComponent(language)}`, { method: 'DELETE' });
+            if (selectedDataset === name) selectedDataset = null;
+            resetSavedFlagsForCurrentSegments();
+            await loadDatasets();
+        };
+
+        window.confirmDeleteDataset = async (name) => {
+            if (!window.confirm(`${t('delete_dataset_confirm')} ${name}`)) return;
+            await window.deleteDataset(name);
+        };
+
+        window.deleteDatasetItem = async (dataset, itemId) => {
+            await fetch(`/segment-review/items/${encodeURIComponent(dataset)}/${encodeURIComponent(itemId)}?language=${encodeURIComponent(language)}`, { method: 'DELETE' });
+            resetSavedFlagsForCurrentSegments();
+            await loadDatasets(dataset);
+            if (reviewFocusItems.length) {
+                reviewFocusItems = reviewFocusItems.filter((item) => !(item.dataset === dataset && item.id === itemId));
+                renderReviewFocus();
+            }
+            await loadCheckup();
+        };
+
+        window.confirmDeleteDatasetItem = async (dataset, itemId) => {
+            if (!window.confirm(`${t('delete_item_confirm')} ${itemId} / ${dataset}`)) return;
+            await window.deleteDatasetItem(dataset, itemId);
+        };
+
+        window.toggleItemEditor = (dataset, itemId) => {
+            const editor = document.getElementById(`editor-${dataset}-${itemId}`);
+            if (!editor) return;
+            editor.hidden = !editor.hidden;
+        };
+
+        window.saveDatasetItemEdit = async (dataset, itemId) => {
+            const textarea = document.getElementById(`editor-text-${dataset}-${itemId}`);
+            if (!textarea) return;
+            const text = textarea.value.trim();
+            if (!text) {
+                setSaveStatus('Text darf nicht leer sein.');
+                return;
+            }
+            const response = await fetch(`/segment-review/items/${encodeURIComponent(dataset)}/${encodeURIComponent(itemId)}?language=${encodeURIComponent(language)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setSaveStatus(data.error || t('save_failed'));
+                return;
+            }
+            setSaveStatus(`${t('item_updated')} ${itemId}.`);
+            await loadDatasets(dataset);
+        };
+
+        async function updateItemKeep(dataset, itemId, keepMarked) {
+            const response = await fetch(`/segment-review/items/${encodeURIComponent(dataset)}/${encodeURIComponent(itemId)}?language=${encodeURIComponent(language)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keepMarked }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setSaveStatus(data.error || t('keep_failed'));
+                return false;
+            }
+            return true;
+        }
+
+        window.markSingleKeep = async (dataset, itemId) => {
+            const datasetObj = datasets.find((entry) => entry.name === dataset);
+            const itemObj = datasetObj?.items?.find((entry) => entry.id === itemId);
+            const nextValue = !(itemObj?.keepMarked);
+            const ok = await updateItemKeep(dataset, itemId, nextValue);
+            if (!ok) return;
+            setSaveStatus(nextValue ? `${itemId}: ${t('kept')}.` : `${itemId}: ${t('unkeep')}.`);
+            await loadDatasets(dataset);
+        };
+
+        window.markItemsKeep = async (items) => {
+            const list = Array.isArray(items) ? items : [];
+            if (!list.length) return;
+            if (!window.confirm(`${t('keep_confirm')} (${list.length})`)) return;
+            for (const item of list) {
+                await updateItemKeep(item.dataset, item.id, true);
+            }
+            setSaveStatus(`${list.length} ${t('kept')}.`);
+            reviewFocusPanel.hidden = true;
+            await loadDatasets();
+        };
+
+        window.openReviewFocus = (items) => {
+            reviewFocusItems = Array.isArray(items) ? items : [];
+            renderReviewFocus();
+            reviewFocusPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        function renderReviewFocus() {
+            const list = reviewFocusItems;
+            if (!list.length) {
+                reviewFocusPanel.hidden = true;
+                reviewFocusList.innerHTML = '';
+                return;
+            }
+            reviewFocusPanel.hidden = false;
+            reviewFocusList.innerHTML = list.map((item) => `
+                <div class="quality-item">
+                    <div class="dataset-row">
+                        <strong>${escapeHtml(item.dataset)}:${escapeHtml(item.id)}</strong>
+                        <div class="dataset-actions">
+                            <button class="btn btn-sm btn-primary" onclick="playStoredItem('${escapeAttr(item.dataset)}', '${escapeAttr(item.id)}')">${escapeHtml(t('play'))}</button>
+                            <button class="btn btn-sm btn-outline-light" onclick="openItemForEditing('${escapeAttr(item.dataset)}', '${escapeAttr(item.id)}')">${escapeHtml(t('open_in_dataset'))}</button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="markSingleKeep('${escapeAttr(item.dataset)}', '${escapeAttr(item.id)}')">${escapeHtml(t('keep'))}</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteDatasetItem('${escapeAttr(item.dataset)}', '${escapeAttr(item.id)}')">${escapeHtml(t('delete'))}</button>
+                        </div>
+                    </div>
+                    <div class="subtle">${escapeHtml(item.text || '')}</div>
+                </div>
+            `).join('');
+        }
+
+        window.openItemForEditing = async (dataset, itemId) => {
+            selectedDataset = dataset;
+            renderDatasets();
+            setTimeout(() => {
+                const editor = document.getElementById(`editor-${dataset}-${itemId}`);
+                if (editor) {
+                    editor.hidden = false;
+                    editor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+        };
+
+        window.playStoredItem = (dataset, itemId) => {
+            const datasetObj = datasets.find((entry) => entry.name === dataset);
+            const itemObj = datasetObj?.items?.find((entry) => entry.id === itemId);
+            if (!itemObj?.audioUrl) return;
+            resetAudioPlayer();
+            currentPlay = new Audio(itemObj.audioUrl);
+            currentPlay.play();
+        };
+
+        function resetSavedFlagsForCurrentSegments() {
+            if (!segments.length) return;
+            for (const segment of segments) {
+                segment.saved = false;
+            }
+            setSaveStatus('Dataset state changed. Unsaved segments can be stored again.');
+            renderSegments();
+        }
+
+        window.migrateLegacyDataset = async (dataset) => {
+            if (!window.confirm(`${t('legacy_confirm')} ${dataset}`)) return;
+            const response = await fetch('/segment-review/migrate-legacy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language, dataset }),
+            });
+            const data = await response.json();
+            if (!data.success) {
+                setSaveStatus(data.error || t('save_failed'));
+                return;
+            }
+            const summary = Object.entries(data.migrated || {}).map(([name, count]) => `${count} → ${name}`).join(', ');
+            setSaveStatus(summary ? `Migration fertig: ${summary}` : 'Migration fertig.');
+            selectedDataset = null;
+            await loadDatasets();
+        };
+
+        function formatClock(totalSeconds) {
+            const seconds = Math.floor(totalSeconds);
+            const minutes = Math.floor(seconds / 60);
+            const remaining = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
+        }
+
+        function formatDurationHours(value) {
+            const hours = Number(value || 0);
+            if (hours < 0.1) {
+                return `${(hours * 60).toFixed(1)} min`;
+            }
+            return `${hours.toFixed(1)} h`;
+        }
+
+        function writeString(view, offset, text) {
+            for (let i = 0; i < text.length; i++) {
+                view.setUint8(offset + i, text.charCodeAt(i));
+            }
+        }
+
+        function sanitizeDatasetName(value) {
+            return (value || '').trim().replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const result = String(reader.result || '');
+                    resolve(result.split(',')[1] || '');
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function escapeAttr(text) {
+            return escapeHtml(text).replace(/'/g, '&#39;');
+        }
+
+        loadCheckup();
+        loadDatasetProfiles();
+        loadDatasets();
+        loadDialogVoices();
+        renderDialogPromptText();
+        updateActiveDatasetBadge();
+        setDialogMode('idle');
+        setCountdownDisplay();
+        renderSegments();
+    </script>
+</body>
+</html>

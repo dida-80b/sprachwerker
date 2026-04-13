@@ -1,0 +1,36 @@
+services:
+  llama-builder:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    privileged: true
+    ipc: host
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - video
+      - render
+
+  asr-api:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    privileged: true
+    ipc: host
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - video
+      - render
+
+  piper:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    privileged: true
+    ipc: host
+    security_opt:
+      - seccomp=unconfined
+    group_add:
+      - "983"
+      - "987"

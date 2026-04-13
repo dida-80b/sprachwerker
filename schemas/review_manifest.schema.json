@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sprachwerker.local/schemas/review_manifest.schema.json",
+  "title": "Sprachwerker Review Manifest Entry",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "id",
+    "text",
+    "duration_seconds",
+    "bucket",
+    "base_dataset",
+    "task_mode",
+    "audio_domain",
+    "target_engine",
+    "speaker_profile",
+    "style_label",
+    "emotion_label",
+    "recording_quality",
+    "tts_suitability"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9]{10}$",
+      "description": "Zero-padded segment ID used as the audio/text filename stem."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reviewed transcript approved for dataset export."
+    },
+    "raw_text": {
+      "type": "string",
+      "description": "Original or unreviewed transcript before manual correction."
+    },
+    "start": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Segment start time in seconds relative to the source recording."
+    },
+    "end": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Segment end time in seconds relative to the source recording."
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Approved segment duration in seconds."
+    },
+    "bucket": {
+      "type": "string",
+      "enum": [
+        "kurz",
+        "mittel",
+        "lang",
+        "sehr-lang",
+        "zu-lang"
+      ],
+      "description": "Duration bucket used for dataset routing."
+    },
+    "base_dataset": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dataset name before the bucket suffix is appended."
+    },
+    "task_mode": {
+      "type": "string",
+      "enum": [
+        "tts",
+        "asr",
+        "both"
+      ]
+    },
+    "audio_domain": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "telephone",
+        "noisy"
+      ]
+    },
+    "target_engine": {
+      "type": "string",
+      "description": "Downstream target engine selected in the review UI."
+    },
+    "speaker_profile": {
+      "type": "string",
+      "enum": [
+        "single_speaker",
+        "multi_speaker"
+      ]
+    },
+    "dialect_label": {
+      "type": "string",
+      "description": "Free-form dialect or accent label."
+    },
+    "style_label": {
+      "type": "string",
+      "description": "Compatibility field. The current UI writes neutral by default."
+    },
+    "emotion_label": {
+      "type": "string",
+      "enum": [
+        "neutral",
+        "happy",
+        "angry",
+        "surprised",
+        "sad",
+        "whispering",
+        "question"
+      ],
+      "description": "Kokoro-compatible emotion list used by the current UI."
+    },
+    "recording_quality": {
+      "type": "string",
+      "enum": [
+        "clean",
+        "usable",
+        "noisy"
+      ]
+    },
+    "tts_suitability": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "needs_review",
+        "reject"
+      ]
+    }
+  }
+}

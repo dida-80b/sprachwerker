@@ -1,0 +1,23 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    build-essential cmake git \
+    curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build llama.cpp pure CPU
+RUN git clone --depth 1 https://github.com/ggerganov/llama.cpp.git /llama.cpp \
+    && cd /llama.cpp \
+    && cmake -B build \
+    && cmake --build build --config Release -j$(nproc)
+
+EXPOSE 18183
+
+CMD ["/llama.cpp/build/bin/llama-server", \
+     "-m", "/models/mistralai_Voxtral-Small-24B-2507-Q8_0.gguf", \
+     "--mmproj", "/models/mmproj.gguf", \
+     "--host", "0.0.0.0", \
+     "--port", "18183", \
+     "-ngl", "0", \
+     "-c", "4096", \
+     "--thread-pool-size", "16"]
