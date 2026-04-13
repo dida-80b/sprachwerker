@@ -14,6 +14,12 @@ Supports German and English UI. Runs fully local — no cloud, no external APIs 
 - Splits speech into sentence-like segments via the space bar
 - Runs local ASR (Voxtral) on each segment
 
+**Free Recording**
+- Dedicated tab for uninterrupted free speech — no space bar required
+- Record as long as you like, then stop; silence detection automatically splits the audio into segments
+- Adjustable minimum silence threshold (default 700 ms)
+- Transcribe all segments with one click, review and edit inline, save directly to any dataset profile
+
 **Emotion Recording**
 - Kokoro-compatible emotion labels: `neutral`, `happy`, `angry`, `surprised`, `sad`, `whispering`, `question`
 - Emotion-actor mode: when a target emotion is set, Piper actively triggers that emotion — tells a bad joke for `happy`, says something provocative for `angry`, whispers a secret for `whispering`, and so on
@@ -220,6 +226,7 @@ Reviewed dataset items are stored as JSON Lines in `_review_manifest.jsonl`, wit
 - Bootstrap and backend setup: [docs/bootstrap-and-backends.md](docs/bootstrap-and-backends.md)
 - First start and live bootstrap checks: [docs/first-start.md](docs/first-start.md)
 - Dialog mode and prompt flow: [docs/dialog-mode.md](docs/dialog-mode.md)
+- Free recording mode: [docs/free-recording.md](docs/free-recording.md)
 
 ## Public Repo Notes
 
