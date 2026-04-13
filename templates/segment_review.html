@@ -25,6 +25,8 @@
                 <div class="tab-strip" role="tablist" aria-label="Studio tabs">
                     <button id="studioTabRecording" class="tab-button active" type="button">{{ ui_strings.toggle_recording }}</button>
                     <span class="tab-separator" aria-hidden="true">|</span>
+                    <button id="studioTabFreerecord" class="tab-button" type="button">{{ ui_strings.toggle_freerecord }}</button>
+                    <span class="tab-separator" aria-hidden="true">|</span>
                     <button id="studioTabCheckup" class="tab-button" type="button">{{ ui_strings.toggle_checkup }}</button>
                     <span class="tab-separator" aria-hidden="true">|</span>
                     <button id="studioTabDatasets" class="tab-button" type="button">{{ ui_strings.toggle_datasets }}</button>
@@ -82,8 +84,8 @@
                 </div>
 
                 <div class="toolbar">
-                    <button id="btnAsrAll" class="btn btn-info" disabled>{{ ui_strings.asr_all }}</button>
-                    <button id="btnSaveApproved" class="btn btn-success" disabled>{{ ui_strings.save_approved }}</button>
+                    <button id="btnAsrAll" class="btn btn-primary" disabled>{{ ui_strings.asr_all }}</button>
+                    <button id="btnSaveApproved" class="btn btn-outline-success" disabled>{{ ui_strings.save_approved }}</button>
                     <span class="status-inline" id="saveStatus"></span>
                 </div>
 
@@ -125,6 +127,33 @@
                         </div>
                         <div id="similarList" class="quality-list"></div>
                     </div>
+                </div>
+            </section>
+
+            <section class="panel" id="freerecordSection" hidden>
+                <div class="panel-head">
+                    <h2>{{ ui_strings.freerecord_title }}</h2>
+                </div>
+                <p class="help-text">{{ ui_strings.freerecord_hint }}</p>
+                <div class="form-row" style="align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+                    <button id="btnFreeRecordStart" class="btn btn-danger" type="button">{{ ui_strings.freerecord_start }}</button>
+                    <button id="btnFreeRecordStop" class="btn btn-outline-warning" type="button" disabled>{{ ui_strings.freerecord_stop }}</button>
+                    <label style="display:flex;align-items:center;gap:.4rem;font-size:.85rem;">
+                        {{ ui_strings.freerecord_min_silence }}
+                        <input id="freerecordMinSilence" type="number" min="300" max="2000" step="100" value="700" style="width:5rem;" class="form-input">
+                        ms
+                    </label>
+                    <span id="freerecordTimer" style="font-size:.9rem;color:var(--color-muted)"></span>
+                </div>
+                <div id="freerecordStatus" style="font-size:.85rem;color:var(--color-muted);margin-bottom:.5rem;"></div>
+                <div id="freerecordSegmentList" style="display:none;">
+                    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap;">
+                        <strong id="freerecordSegmentCount"></strong>
+                        <button id="btnFreeTranscribeAll" class="btn btn-primary" type="button">{{ ui_strings.freerecord_transcribe_all }}</button>
+                        <button id="btnFreeSaveAll" class="btn btn-outline-success" type="button" disabled>{{ ui_strings.freerecord_save_all }}</button>
+                        <button id="btnFreeDiscard" class="btn btn-outline-danger" type="button">{{ ui_strings.freerecord_discard }}</button>
+                    </div>
+                    <div id="freerecordSegments" class="accordion-list"></div>
                 </div>
             </section>
 
@@ -329,10 +358,12 @@
         const reviewFocusList = document.getElementById('reviewFocusList');
         const clearReviewFocus = document.getElementById('clearReviewFocus');
         const recordingSection = document.getElementById('recordingSection');
+        const freerecordSection = document.getElementById('freerecordSection');
         const checkupSection = document.getElementById('checkupSection');
         const datasetsSection = document.getElementById('datasetsSection');
         const settingsSection = document.getElementById('settingsSection');
         const studioTabRecording = document.getElementById('studioTabRecording');
+        const studioTabFreerecord = document.getElementById('studioTabFreerecord');
         const studioTabCheckup = document.getElementById('studioTabCheckup');
         const studioTabDatasets = document.getElementById('studioTabDatasets');
         const studioTabSettings = document.getElementById('studioTabSettings');
@@ -385,6 +416,7 @@
             createDatasetButton.title = exists ? (language.startsWith('de') ? `"${name}" existiert bereits — Emotion einfach im Dropdown wechseln` : `"${name}" already exists — just change the emotion in the dropdown`) : '';
         }
         studioTabRecording.addEventListener('click', () => setStudioTab('recording'));
+        studioTabFreerecord.addEventListener('click', () => setStudioTab('freerecord'));
         studioTabCheckup.addEventListener('click', () => setStudioTab('checkup'));
         studioTabDatasets.addEventListener('click', () => setStudioTab('datasets'));
         studioTabSettings.addEventListener('click', () => setStudioTab('settings'));
@@ -447,10 +479,12 @@
 
         function setStudioTab(name) {
             recordingSection.hidden = name !== 'recording';
+            freerecordSection.hidden = name !== 'freerecord';
             checkupSection.hidden = name !== 'checkup';
             datasetsSection.hidden = name !== 'datasets';
             settingsSection.hidden = name !== 'settings';
             studioTabRecording.classList.toggle('active', name === 'recording');
+            studioTabFreerecord.classList.toggle('active', name === 'freerecord');
             studioTabCheckup.classList.toggle('active', name === 'checkup');
             studioTabDatasets.classList.toggle('active', name === 'datasets');
             studioTabSettings.classList.toggle('active', name === 'settings');
@@ -1743,6 +1777,219 @@
         setDialogMode('idle');
         setCountdownDisplay();
         renderSegments();
+
+        // ── Free Recording Tab ─────────────────────────────────────────────
+        (function initFreeRecord() {
+            const btnStart   = document.getElementById('btnFreeRecordStart');
+            const btnStop    = document.getElementById('btnFreeRecordStop');
+            const timerEl    = document.getElementById('freerecordTimer');
+            const statusEl   = document.getElementById('freerecordStatus');
+            const segListEl  = document.getElementById('freerecordSegmentList');
+            const segCountEl = document.getElementById('freerecordSegmentCount');
+            const segmentsEl = document.getElementById('freerecordSegments');
+            const btnTranscribeAll = document.getElementById('btnFreeTranscribeAll');
+            const btnSaveAll       = document.getElementById('btnFreeSaveAll');
+            const btnDiscard       = document.getElementById('btnFreeDiscard');
+            const minSilenceInput  = document.getElementById('freerecordMinSilence');
+
+            let mediaRecorder = null;
+            let chunks = [];
+            let timerInterval = null;
+            let recSeconds = 0;
+            let freeSegments = []; // [{index, start, end, duration, audio (data URL), text}]
+
+            function setStatus(msg) { statusEl.textContent = msg; }
+
+            function startTimer() {
+                recSeconds = 0;
+                timerEl.textContent = '0:00';
+                timerInterval = setInterval(() => {
+                    recSeconds++;
+                    const m = Math.floor(recSeconds / 60);
+                    const s = String(recSeconds % 60).padStart(2, '0');
+                    timerEl.textContent = `${m}:${s}`;
+                }, 1000);
+            }
+
+            function stopTimer() {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            btnStart.addEventListener('click', async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    chunks = [];
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                    mediaRecorder.start(200);
+                    btnStart.disabled = true;
+                    btnStop.disabled = false;
+                    segListEl.style.display = 'none';
+                    setStatus('');
+                    startTimer();
+                } catch (err) {
+                    setStatus('Mikrofon-Fehler: ' + err.message);
+                }
+            });
+
+            btnStop.addEventListener('click', async () => {
+                if (!mediaRecorder) return;
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(t => t.stop());
+                stopTimer();
+                btnStop.disabled = true;
+                setStatus(t('freerecord_splitting'));
+
+                await new Promise(resolve => { mediaRecorder.onstop = resolve; });
+
+                const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+                const minSilence = parseInt(minSilenceInput.value) || 700;
+
+                const formData = new FormData();
+                formData.append('audio', blob, 'recording.webm');
+                formData.append('min_silence_ms', String(minSilence));
+
+                try {
+                    const resp = await fetch('/free-record/split', { method: 'POST', body: formData });
+                    const data = await resp.json();
+                    if (!data.success) throw new Error(data.error || 'Split failed');
+                    freeSegments = data.segments.map(s => ({ ...s, text: '' }));
+                    renderFreeSegments();
+                    setStatus('');
+                } catch (err) {
+                    setStatus('Fehler: ' + err.message);
+                } finally {
+                    btnStart.disabled = false;
+                }
+            });
+
+            function renderFreeSegments() {
+                segmentsEl.innerHTML = '';
+                if (!freeSegments.length) {
+                    setStatus(t('freerecord_no_segments'));
+                    segListEl.style.display = 'none';
+                    return;
+                }
+                segCountEl.textContent = `${freeSegments.length} Segmente`;
+                segListEl.style.display = '';
+                btnSaveAll.disabled = true;
+
+                freeSegments.forEach((seg, i) => {
+                    const row = document.createElement('div');
+                    row.className = 'accordion-item';
+                    row.style.cssText = 'padding:.5rem .75rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;';
+                    row.innerHTML = `
+                        <span style="min-width:2.5rem;color:var(--color-muted);font-size:.8rem;">${(seg.duration).toFixed(1)}s</span>
+                        <audio controls src="${escapeAttr(seg.audio)}" style="height:28px;flex:0 0 auto;max-width:160px;"></audio>
+                        <input type="text" class="form-input free-seg-text" data-idx="${i}" value="${escapeAttr(seg.text)}"
+                            placeholder="Transkription..." style="flex:1;min-width:150px;">
+                        <button class="btn btn-sm btn-outline-danger free-seg-del" data-idx="${i}" type="button">✕</button>
+                    `;
+                    segmentsEl.appendChild(row);
+                });
+
+                segmentsEl.querySelectorAll('.free-seg-text').forEach(inp => {
+                    inp.addEventListener('input', () => {
+                        freeSegments[parseInt(inp.dataset.idx)].text = inp.value;
+                        updateSaveAllButton();
+                    });
+                });
+                segmentsEl.querySelectorAll('.free-seg-del').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.dataset.idx);
+                        freeSegments.splice(idx, 1);
+                        renderFreeSegments();
+                    });
+                });
+            }
+
+            function updateSaveAllButton() {
+                const anyText = freeSegments.some(s => s.text.trim().length > 0);
+                btnSaveAll.disabled = !anyText;
+            }
+
+            btnTranscribeAll.addEventListener('click', async () => {
+                if (!freeSegments.length) return;
+                btnTranscribeAll.disabled = true;
+                setStatus(t('freerecord_transcribing').replace('{n}', freeSegments.length));
+
+                for (let i = 0; i < freeSegments.length; i++) {
+                    const seg = freeSegments[i];
+                    if (seg.text.trim()) continue;
+                    try {
+                        const resp = await fetch(seg.audio);
+                        const blob = await resp.blob();
+                        const formData = new FormData();
+                        formData.append('audio', blob, `seg_${i}.wav`);
+                        const r = await fetch('/transcribe', { method: 'POST', body: formData });
+                        const d = await r.json();
+                        if (d.success && d.text) {
+                            freeSegments[i].text = d.text;
+                            const inp = segmentsEl.querySelector(`.free-seg-text[data-idx="${i}"]`);
+                            if (inp) inp.value = d.text;
+                        }
+                    } catch (e) { /* skip */ }
+                    setStatus(`${i + 1} / ${freeSegments.length}`);
+                }
+
+                setStatus('');
+                btnTranscribeAll.disabled = false;
+                updateSaveAllButton();
+            });
+
+            btnSaveAll.addEventListener('click', async () => {
+                if (!activeDataset) { setStatus('Kein aktiver Datensatz ausgewaehlt.'); return; }
+                const items = freeSegments
+                    .filter(s => s.text.trim())
+                    .map(s => {
+                        // Strip data URL prefix → raw base64
+                        const audioB64 = s.audio.includes(',') ? s.audio.split(',')[1] : s.audio;
+                        return {
+                            text: s.text.trim(),
+                            audioBase64: audioB64,
+                            audioExt: 'wav',
+                            startTime: s.start,
+                            endTime: s.end,
+                            durationSeconds: s.duration,
+                            approved: true,
+                            emotionLabel: emotionLabelInput ? emotionLabelInput.value : 'neutral',
+                            dialectLabel: dialectLabelInput ? dialectLabelInput.value.trim() : '',
+                        };
+                    });
+                if (!items.length) return;
+                btnSaveAll.disabled = true;
+                setStatus('Speichere...');
+                try {
+                    const resp = await fetch('/segment-review/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language, dataset: activeDataset, items }),
+                    });
+                    const d = await resp.json();
+                    if (d.success) {
+                        setStatus(t('freerecord_saved').replace('{n}', items.length));
+                        freeSegments = [];
+                        segListEl.style.display = 'none';
+                        await loadDatasets();
+                        await loadCheckup();
+                    } else {
+                        setStatus('Fehler: ' + (d.error || 'unbekannt'));
+                        btnSaveAll.disabled = false;
+                    }
+                } catch (e) {
+                    setStatus('Fehler: ' + e.message);
+                    btnSaveAll.disabled = false;
+                }
+            });
+
+            btnDiscard.addEventListener('click', () => {
+                freeSegments = [];
+                segListEl.style.display = 'none';
+                setStatus('');
+                timerEl.textContent = '';
+            });
+        })();
     </script>
 </body>
 </html>

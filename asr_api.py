@@ -142,9 +142,23 @@ UI_COPY = {
         "menu_help": "Hilfe",
         "menu_view": "Einblenden",
         "toggle_recording": "Aufnahme",
+        "toggle_freerecord": "Freie Aufnahme",
         "toggle_checkup": "Checkup",
         "toggle_datasets": "Datensaetze",
         "toggle_settings": "Einstellungen",
+        "freerecord_title": "Freie Aufnahme",
+        "freerecord_hint": "Einfach drauflosreden — Pausen werden automatisch als Satzgrenzen erkannt.",
+        "freerecord_start": "Aufnahme starten",
+        "freerecord_stop": "Aufnahme stoppen",
+        "freerecord_split": "Segmentieren",
+        "freerecord_transcribe_all": "Alle transkribieren",
+        "freerecord_save_all": "Alle speichern",
+        "freerecord_no_segments": "Keine Segmente erkannt. Versuche laenger zu sprechen oder Pausen zu machen.",
+        "freerecord_splitting": "Segmentiere...",
+        "freerecord_transcribing": "Transkribiere {n} Segmente...",
+        "freerecord_saved": "{n} Segmente gespeichert.",
+        "freerecord_min_silence": "Mindest-Pause (ms)",
+        "freerecord_discard": "Verwerfen",
         "open_settings": "Einstellungen",
         "open_help_window": "Hilfe-Fenster",
         "popup_blocked": "Popup blockiert. Bitte Browser-Popups fuer diese Seite erlauben.",
@@ -244,8 +258,8 @@ UI_COPY = {
         "ready": "Ready",
         "space_hint_recording": "Leertaste während der Aufnahme: Segmentgrenze.",
         "space_hint_idle": "Nach dem Prompt startet Leertaste die Aufnahme. Die naechste Leertaste stoppt sie wieder.",
-        "asr_all": "ASR für alle",
-        "save_approved": "Freigegebene speichern",
+        "asr_all": "Alle transkribieren",
+        "save_approved": "Alle speichern",
         "datasets_title": "Datensätze",
         "review_focus_title": "Prüffokus",
         "close": "Schließen",
@@ -284,7 +298,7 @@ UI_COPY = {
         "approved_text_label": "Freigegebener Text",
         "approved_text_placeholder": "Hier Zieltext prüfen und korrigieren...",
         "save": "Speichern",
-        "review": "Prüfen",
+        "review": "Bearbeiten",
         "keep": "Behalten",
         "unkeep": "Keep lösen",
         "kept": "Bewusst behalten",
@@ -329,9 +343,23 @@ UI_COPY = {
         "menu_help": "Help",
         "menu_view": "Show",
         "toggle_recording": "Recording",
+        "toggle_freerecord": "Free Recording",
         "toggle_checkup": "Checkup",
         "toggle_datasets": "Datasets",
         "toggle_settings": "Settings",
+        "freerecord_title": "Free Recording",
+        "freerecord_hint": "Just talk freely — pauses are automatically detected as sentence boundaries.",
+        "freerecord_start": "Start recording",
+        "freerecord_stop": "Stop recording",
+        "freerecord_split": "Segment",
+        "freerecord_transcribe_all": "Transcribe all",
+        "freerecord_save_all": "Save all",
+        "freerecord_no_segments": "No segments detected. Try speaking longer or making clear pauses.",
+        "freerecord_splitting": "Segmenting...",
+        "freerecord_transcribing": "Transcribing {n} segments...",
+        "freerecord_saved": "{n} segments saved.",
+        "freerecord_min_silence": "Min. pause (ms)",
+        "freerecord_discard": "Discard",
         "open_settings": "Settings",
         "open_help_window": "Help window",
         "popup_blocked": "Popup blocked. Please allow popups for this page.",
@@ -431,8 +459,8 @@ UI_COPY = {
         "ready": "Ready",
         "space_hint_recording": "Space during recording: add segment boundary.",
         "space_hint_idle": "After the prompt, press space to start recording. Press space again to stop it.",
-        "asr_all": "Run ASR for all",
-        "save_approved": "Save approved",
+        "asr_all": "Transcribe all",
+        "save_approved": "Save all",
         "datasets_title": "Datasets",
         "review_focus_title": "Review focus",
         "close": "Close",
@@ -471,7 +499,7 @@ UI_COPY = {
         "approved_text_label": "Approved text",
         "approved_text_placeholder": "Review and correct the target text here...",
         "save": "Save",
-        "review": "Review",
+        "review": "Edit",
         "keep": "Keep",
         "unkeep": "Unset keep",
         "kept": "Kept intentionally",
@@ -2098,6 +2126,97 @@ async def delete_dataset_profile(request: Request) -> JSONResponse:
 @app.get("/segment-review/checkup")
 async def segment_review_checkup(language: str = SOURCE_LANGUAGE_CODE, ui_lang: str = UI_DEFAULT_LANG) -> JSONResponse:
     return JSONResponse(content={"success": True, "checkup": build_checkup(language, ui_lang), "uiLanguage": normalize_ui_lang(ui_lang)})
+
+
+@app.post("/free-record/split")
+async def free_record_split(
+    audio: UploadFile = File(...),
+    min_silence_ms: int = Form(700),
+    silence_thresh_db: float = Form(-35.0),
+) -> JSONResponse:
+    """Split a free recording into segments by silence detection."""
+    audio_bytes = await audio.read()
+    try:
+        wav_bytes, total_duration = normalize_audio(audio_bytes)
+    except Exception as exc:
+        return JSONResponse(status_code=400, content={"success": False, "error": f"Audio error: {exc}"})
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp.write(wav_bytes)
+        src_path = Path(tmp.name)
+
+    try:
+        # Run ffmpeg silencedetect
+        result = subprocess.run(
+            [
+                "ffmpeg", "-nostdin", "-i", str(src_path),
+                "-af", f"silencedetect=noise={silence_thresh_db}dB:d={min_silence_ms / 1000:.3f}",
+                "-f", "null", "-",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        stderr = result.stderr
+
+        # Parse silence intervals
+        silence_starts = [float(m) for m in re.findall(r"silence_start: ([0-9.]+)", stderr)]
+        silence_ends = [float(m) for m in re.findall(r"silence_end: ([0-9.]+)", stderr)]
+
+        # Build cut points: midpoints of silence intervals
+        cut_points = [0.0]
+        for s, e in zip(silence_starts, silence_ends):
+            cut_points.append((s + e) / 2.0)
+        cut_points.append(total_duration)
+
+        # Extract each segment as base64 WAV
+        segments = []
+        for i in range(len(cut_points) - 1):
+            seg_start = cut_points[i]
+            seg_end = cut_points[i + 1]
+            seg_duration = seg_end - seg_start
+            if seg_duration < 0.5:
+                continue
+
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as seg_tmp:
+                seg_path = Path(seg_tmp.name)
+
+            try:
+                seg_result = subprocess.run(
+                    [
+                        "ffmpeg", "-nostdin", "-y",
+                        "-i", str(src_path),
+                        "-ss", f"{seg_start:.3f}",
+                        "-to", f"{seg_end:.3f}",
+                        "-ac", "1", "-ar", "24000", "-c:a", "pcm_s16le",
+                        str(seg_path),
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    check=False,
+                )
+                if seg_result.returncode != 0 or not seg_path.exists():
+                    continue
+                seg_bytes = seg_path.read_bytes()
+                seg_b64 = base64.b64encode(seg_bytes).decode()
+                segments.append({
+                    "index": len(segments),
+                    "start": round(seg_start, 3),
+                    "end": round(seg_end, 3),
+                    "duration": round(seg_duration, 3),
+                    "audio": f"data:audio/wav;base64,{seg_b64}",
+                })
+            finally:
+                seg_path.unlink(missing_ok=True)
+
+        return JSONResponse(content={"success": True, "segments": segments, "totalDuration": round(total_duration, 3)})
+
+    except Exception as exc:
+        logger.warning("free_record_split failed: %s", exc)
+        return JSONResponse(status_code=500, content={"success": False, "error": str(exc)})
+    finally:
+        src_path.unlink(missing_ok=True)
 
 
 @app.post("/segment-review/migrate-legacy")
